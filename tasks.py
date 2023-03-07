@@ -211,4 +211,4 @@ def pre_push(c: Context):
     format(c, check=True)
     lint(c)
     check(c, include_tests=True)
-    test(c)
+    test(c, e2e=True, cov=True)

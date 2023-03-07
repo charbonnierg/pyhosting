@@ -16,11 +16,13 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
 ]
 dynamic = ["version"]
-dependencies = []
+dependencies = ["starlette", "jinja2", "genid>=1.0.1", "httpx", "typer"]
 
 [project.optional-dependencies]
+uvicorn = ["uvicorn"]
 build = ["build", "invoke", "pip-tools"]
 dev = [
+    "httpx",
     "black",
     "isort",
     "invoke",
@@ -30,6 +32,7 @@ dev = [
     "pytest-asyncio",
     "pytest-cov",
     "types-setuptools",
+    "uvicorn",
 ]
 docs = [
     "mkdocs-gen-files",
@@ -40,10 +43,13 @@ docs = [
     "pymdown-extensions",
 ]
 
+[project.scripts]
+ph = "pyhosting.applications.cli:cli"
+pyhosting = "pyhosting.applications.cli:cli"
+
 [project.urls]
 Repository = "https://github.com/charbonnierg/pyhosting"
 Issues = "https://github.com/charbonnierg/pyhosting/issues"
-
 
 [tool.setuptools.dynamic]
 version = { attr = "pyhosting.__version__" }

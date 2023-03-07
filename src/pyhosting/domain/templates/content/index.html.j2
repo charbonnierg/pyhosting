@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>HTML5</title>
+  <meta name="description" content="Basic template">
+  <meta name="author" content="Autore sicuramente">
+
+  <link rel="stylesheet" href="/pages/static/css/default/default.css">
+  <link rel="stylesheet" href="/pages/static/css/default-dark/default-dark.css">
+
+</head>
+
+<body>
+  <script src="/pages/static/js/radio-behavior.js"></script>
+  <script src="/pages/static/js/tabs.js"></script>
+  <div class="hero hero--dark">
+    <div class="container">
+      <h1 class="hero__title">Your page is ready to host content</h1>
+      <p class="hero__subtitle">Start by publishing a new version</p>
+    </div>
+  </div>
+  <div class="container">
+    <div class="col">
+      <div class="row margin-top--lg">
+        <div class="card">
+          <div class="card__header">
+            <h3>Using the command line and HTTPie</h3>
+          </div>
+          <div class="card__body">
+            <p>
+              You can use HTTPie in order to send a POST request. Assuming there is an index.html file in current
+              directory:
+
+            </p>
+            <pre>http POST {{ base_url }}/api/pages/{{ page.id }}/versions/ x-page-latest:1 x-page-version:1 @index.html</pre>
+
+          </div>
+          <div class="card__footer">
+            <p>The page version must be provided as <code>x-page-version</code> header.
+              <code>x-page-latest</code> header is used to indicate that this version should be considered as the latest
+              version.
+            </p>
+            <p><code>httpie</code> can be installed using the command <code>python -m pip install httpie</code></p>
+          </div>
+        </div>
+      </div>
+      <div class="row margin-top--lg">
+        <div class="card">
+          <div class="card__header">
+            <h3>Using the command line and pyhosting</h3>
+          </div>
+          <div class="card__body">
+            <p>
+              You can use pyhosting in order to send a POST request. Assuming there is an index.html file in current
+              directory:
+
+            </p>
+            <pre>ph page publish {{ page.name }} --latest --version=1 ./index.html</pre>
+
+          </div>
+          <div class="card__footer">
+            <p>The page version must be provided as <code>--version</code> argument.
+              <code>--latest</code> argument is used to indicate that this version should be considered as the latest
+              version.
+            </p>
+            <p><code>pyhosting</code> can be installed using the command <code>python -m pip install pyhosting</code>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
