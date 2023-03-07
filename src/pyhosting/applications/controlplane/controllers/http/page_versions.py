@@ -8,10 +8,7 @@ from starlette.routing import Router
 from pyhosting.domain.gateways import EventBusGateway
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
 from pyhosting.domain.usecases.crud_pages import GetPage, UpdateLatestPageVersion
-from pyhosting.domain.usecases.crud_versions import (
-    CreatePageVersion,
-    CreatePageVersionCommand,
-)
+from pyhosting.domain.usecases.crud_versions import CreatePageVersion
 
 
 class PageVersionsRouter(Router):
@@ -44,7 +41,7 @@ class PageVersionsRouter(Router):
             return JSONResponse(
                 {"error": "x-page-version header must be present"}, status_code=428
             )
-        # Prepare usecase
+        # Prepare usecase (NOTE: This could be done once instead of every request)
         usecase = CreatePageVersion(
             self.versions_repository,
             event_bus=self.event_bus,
@@ -55,14 +52,12 @@ class PageVersionsRouter(Router):
         # Fetch request body and page id
         content = await request.body()
         page_id = request.path_params["page_id"]
-        # Prepare command
-        command = CreatePageVersionCommand(
+        # Execute usecase
+        created_version = await usecase.do(
             page_id=page_id,
-            version=version,
+            page_version=version,
             content=content,
             latest=latest is not None,
         )
-        # Execute usecase with command
-        created_version = await usecase.do(command)
         # Return JSON representation of a page version
         return JSONResponse(asdict(created_version), status_code=201)

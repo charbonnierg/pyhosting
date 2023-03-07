@@ -11,11 +11,8 @@ from pyhosting.domain.gateways import EventBusGateway
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
 from pyhosting.domain.usecases.crud_pages import (
     CreatePage,
-    CreatePageCommand,
     DeletePage,
-    DeletePageCommand,
     GetPage,
-    GetPageCommand,
     ListPages,
 )
 
@@ -57,11 +54,11 @@ class PagesAPIRouter(Router):
         """Reutrn an HTTP response with an existing page infos."""
         # Prepare usecase
         usecase = GetPage(repository=self.pages_repository)
-        # Prepare command using path parametre
-        command = GetPageCommand(id=request.path_params["page_id"])
+        # Extract path parameter
+        page_id = request.path_params["page_id"]
         # Execute usecase
         try:
-            result = await usecase.do(command)
+            result = await usecase.do(page_id=page_id)
         except PageNotFoundError as exc:
             # Return an HTTP error rather than raising an exception
             return JSONResponse({"error": exc.msg}, status_code=exc.code)
@@ -88,12 +85,14 @@ class PagesAPIRouter(Router):
             event_bus=self.event_bus,
         )
         # Fetch request body
-        body = await request.json()
-        # Prepare command
-        command = CreatePageCommand(**body)
+        command = await request.json()
         # Execute usecase with command
         try:
-            result = await usecase.do(command)
+            result = await usecase.do(
+                name=command["name"],
+                title=command.get("title"),
+                description=command.get("description"),
+            )
         except PageAlreadyExistsError as exc:
             # Return an HTTP error instead of raising an exception
             return JSONResponse({"error": exc.msg}, status_code=409)
@@ -108,10 +107,10 @@ class PagesAPIRouter(Router):
             event_bus=self.event_bus,
         )
         # Prepare command using path parameter
-        command = DeletePageCommand(id=request.path_params["page_id"])
+        page_id = request.path_params["page_id"]
         # Execute usecase with command
         try:
-            await usecase.do(command)
+            await usecase.do(page_id=page_id)
         except PageNotFoundError as exc:
             # Return an HTTP error when page does not exist
             return JSONResponse({"error": exc.msg}, status_code=exc.code)

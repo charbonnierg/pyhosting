@@ -3,7 +3,6 @@ import typing as t
 import pytest
 from genid import IDGenerator
 
-from pyhosting.domain.commands.crud_pages import CreatePageCommand
 from pyhosting.domain.entities import Page, PageVersion
 from pyhosting.domain.errors import PageAlreadyExistsError, PageNotFoundError
 from pyhosting.domain.gateways import EventBusGateway
@@ -61,10 +60,9 @@ class TestPageCrudUseCases:
         page_repository: PageRepository,
         event_bus: EventBusGateway,
     ):
-        cmd = CreatePageCommand(name=name, title=title, description=description)
         result = await crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
-        ).do(cmd)
+        ).do(name=name, title=title, description=description)
         assert result == page
 
     @parametrize_id_generator("incremental")
@@ -77,13 +75,12 @@ class TestPageCrudUseCases:
         usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
         )
-        cmd = CreatePageCommand(name="test")
-        result = await usecase.do(cmd)
+        result = await usecase.do(name="test")
         assert result == Page(
             id="0", name="test", title="test", description="", latest_version=None
         )
         with pytest.raises(PageAlreadyExistsError, match="Page already exists: test"):
-            await usecase.do(cmd)
+            await usecase.do(name="test")
 
     @parametrize_id_generator("incremental")
     async def test_list_pages_many(
@@ -96,7 +93,7 @@ class TestPageCrudUseCases:
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
         )
         for i in range(10):
-            await create_usecase.do(crud_pages.CreatePageCommand(name=f"test-{i}"))
+            await create_usecase.do(name=f"test-{i}")
         list_usecase = crud_pages.ListPages(page_repository)
         result = await list_usecase.do()
         assert result == [
@@ -120,9 +117,9 @@ class TestPageCrudUseCases:
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
         )
-        page = await create_usecase.do(crud_pages.CreatePageCommand(name="test"))
+        page = await create_usecase.do(name="test")
         get_usecase = crud_pages.GetPage(repository=page_repository)
-        get_result = await get_usecase.do(crud_pages.GetPageCommand(id="fakeid"))
+        get_result = await get_usecase.do(page_id="fakeid")
         assert (
             page
             == get_result
@@ -140,7 +137,7 @@ class TestPageCrudUseCases:
         with pytest.raises(
             PageNotFoundError, match="Page not found: not-an-existing-id"
         ):
-            await usecase.do(crud_pages.GetPageCommand(id="not-an-existing-id"))
+            await usecase.do(page_id="not-an-existing-id")
 
     async def test_delete_page_not_found(
         self, page_repository: PageRepository, event_bus: EventBusGateway
@@ -149,7 +146,7 @@ class TestPageCrudUseCases:
         with pytest.raises(
             PageNotFoundError, match="Page not found: not-an-existing-id"
         ):
-            await usecase.do(crud_pages.DeletePageCommand(id="not-an-existing-id"))
+            await usecase.do(page_id="not-an-existing-id")
 
     @parametrize_id_generator("constant", value="fakeid")
     async def test_delete_page_success(
@@ -161,14 +158,14 @@ class TestPageCrudUseCases:
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
         )
-        page = await create_usecase.do(crud_pages.CreatePageCommand(name="test"))
+        page = await create_usecase.do(name="test", title=None, description=None)
         delete_usecase = crud_pages.DeletePage(
             repository=page_repository, event_bus=event_bus
         )
-        await delete_usecase.do(crud_pages.DeletePageCommand(page.id))
+        await delete_usecase.do(page.id)
         get_usecase = crud_pages.GetPage(repository=page_repository)
         with pytest.raises(PageNotFoundError, match="Page not found: fakeid"):
-            await get_usecase.do(crud_pages.GetPageCommand(page.id))
+            await get_usecase.do(page_id=page.id)
 
     @parametrize_id_generator("constant", value="fakeid")
     async def test_update_latest_version_success(
@@ -180,7 +177,7 @@ class TestPageCrudUseCases:
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
         )
-        page = await create_usecase.do(crud_pages.CreatePageCommand(name="test"))
+        page = await create_usecase.do(name="test")
         assert page.latest_version is None
         update_usecase = crud_pages.UpdateLatestPageVersion(page_repository)
         await update_usecase.do(
@@ -194,7 +191,7 @@ class TestPageCrudUseCases:
             ),
         )
         get_usecase = crud_pages.GetPage(repository=page_repository)
-        page = await get_usecase.do(crud_pages.GetPageCommand("fakeid"))
+        page = await get_usecase.do(page_id="fakeid")
         assert page.latest_version == "1"
         await update_usecase.do(
             "fakeid",
@@ -206,7 +203,7 @@ class TestPageCrudUseCases:
                 created_timestamp=0,
             ),
         )
-        page = await get_usecase.do(crud_pages.GetPageCommand("fakeid"))
+        page = await get_usecase.do(page_id="fakeid")
         assert page.latest_version == "2"
 
     async def test_update_latest_version_not_found(

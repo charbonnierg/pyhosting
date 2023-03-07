@@ -3,7 +3,6 @@ from dataclasses import dataclass
 
 from genid import IDGenerator
 
-from ..commands.crud_pages import CreatePageCommand, DeletePageCommand, GetPageCommand
 from ..entities import Page, PageVersion
 from ..errors import PageAlreadyExistsError, PageNotFoundError
 from ..events.pages import PAGE_CREATED, PAGE_DELETED, PageCreated, PageDeleted
@@ -17,11 +16,11 @@ class GetPage:
 
     repository: PageRepository
 
-    async def do(self, command: GetPageCommand) -> Page:
+    async def do(self, page_id: str) -> Page:
         """Execute usecase: Get a page."""
-        page = await self.repository.get_page_by_id(command.id)
+        page = await self.repository.get_page_by_id(page_id)
         if page is None:
-            raise PageNotFoundError(command.id)
+            raise PageNotFoundError(page_id)
         return page
 
 
@@ -55,15 +54,20 @@ class CreatePage:
     repository: PageRepository
     event_bus: EventBusGateway
 
-    async def do(self, command: CreatePageCommand) -> Page:
+    async def do(
+        self,
+        name: str,
+        title: t.Optional[str] = None,
+        description: t.Optional[str] = None,
+    ) -> Page:
         """Execute usecase: Create a new page."""
-        if await self.repository.page_name_exists(command.name):
-            raise PageAlreadyExistsError(command.name)
+        if await self.repository.page_name_exists(name):
+            raise PageAlreadyExistsError(name)
         page = Page(
             id=self.id_generator.new(),
-            name=command.name,
-            title=command.title or command.name,
-            description=command.description or "",
+            name=name,
+            title=title or name,
+            description=description or "",
             latest_version=None,
         )
         await self.repository.create_page(page)
@@ -78,12 +82,12 @@ class DeletePage:
     repository: PageRepository
     event_bus: EventBusGateway
 
-    async def do(self, command: DeletePageCommand) -> None:
+    async def do(self, page_id: str) -> None:
         """Delete a page"""
-        page = await self.repository.get_page_by_id(command.id)
+        page = await self.repository.get_page_by_id(page_id)
         if page is None:
-            raise PageNotFoundError(command.id)
-        await self.repository.delete_page(command.id)
+            raise PageNotFoundError(page_id)
+        await self.repository.delete_page(page_id)
         await self.event_bus.emit_event(
             PAGE_DELETED, PageDeleted(id=page.id, name=page.name)
         )
