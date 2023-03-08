@@ -160,13 +160,19 @@ def test_create_version_non_latest(client: HTTPTestClient):
     version = client.publish_page_version(
         "fakeid", "1", TEST_CONTENT.encode(), latest=False
     )
+    # Get page version
+    read_version = client.get_page_version("fakeid", "1")
     # Expect content (client already validates status code and parse response)
-    assert version == PageVersion(
-        page_id="fakeid",
-        page_name="test",
-        version="1",
-        checksum=TEST_CONTENT_MD5,
-        created_timestamp=0,
+    assert (
+        read_version
+        == version
+        == PageVersion(
+            page_id="fakeid",
+            page_name="test",
+            version="1",
+            checksum=TEST_CONTENT_MD5,
+            created_timestamp=0,
+        )
     )
     assert client.get_page("fakeid") == Page(
         id="fakeid",
@@ -175,3 +181,64 @@ def test_create_version_non_latest(client: HTTPTestClient):
         description="",
         latest_version=None,
     )
+
+
+@parametrize_id_generator("constant", value="fakeid")
+def test_delete_version_non_latest(client: HTTPTestClient):
+    # Start by creating a page
+    client.create_page(name="test", title="Test Page")
+    # The create a new version with latest=False
+    client.publish_page_version("fakeid", "1", TEST_CONTENT.encode(), latest=False)
+    # Delete the version
+    client.delete_page_version("fakeid", "1")
+    # Expect get to raise an error
+    with pytest.raises(Exception, match="404 Not Found"):
+        client.get_page_version("fakeid", "1")
+
+
+def test_delete_version_page_not_found(client: HTTPTestClient):
+    with pytest.raises(Exception, match="404 Not Found"):
+        client.delete_page_version("not-an-existin-id", "0")
+
+
+@parametrize_id_generator("constant", value="fakeid")
+def test_delete_version_not_found(client: HTTPTestClient):
+    client.create_page(name="test", title="Test Page")
+    with pytest.raises(Exception, match="404 Not Found"):
+        client.delete_page_version("fakeid", "0")
+
+
+def test_list_versions_page_not_found(client: HTTPTestClient):
+    with pytest.raises(Exception, match="404 Not Found"):
+        client.list_page_versions("not-an-existin-id")
+
+
+@parametrize_id_generator("constant", value="fakeid")
+def test_list_versions_empty(client: HTTPTestClient):
+    client.create_page(name="test", title="Test Page")
+    versions = client.list_page_versions("fakeid")
+    assert versions == []
+
+
+@parametrize_id_generator("constant", value="fakeid")
+@parametrize_clock(lambda: 0)
+def test_list_versions_many_results(client: HTTPTestClient):
+    # Start by creating a page
+    client.create_page(name="test", title="Test Page")
+    # The create a new version with latest=False
+    for idx in range(10):
+        client.publish_page_version(
+            "fakeid", str(idx), TEST_CONTENT.encode(), latest=True
+        )
+    result = client.list_page_versions("fakeid")
+    assert len(result) == 10
+    assert result == [
+        PageVersion(
+            page_id="fakeid",
+            page_name="test",
+            version=str(idx),
+            checksum=TEST_CONTENT_MD5,
+            created_timestamp=0,
+        )
+        for idx in range(10)
+    ]

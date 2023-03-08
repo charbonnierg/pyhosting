@@ -6,6 +6,7 @@ from logging import getLogger
 
 from ...domain.gateways import EventBusGateway
 
+
 T = t.TypeVar("T")
 
 logger = getLogger("actors")

@@ -4,11 +4,12 @@ import pytest
 from genid import IDGenerator
 
 from pyhosting.domain.entities import Page, PageVersion
+from pyhosting.domain.events import PAGE_CREATED, PAGE_DELETED
 from pyhosting.domain.errors import PageAlreadyExistsError, PageNotFoundError
 from pyhosting.domain.gateways import EventBusGateway
 from pyhosting.domain.repositories import PageRepository
 from pyhosting.domain.usecases import crud_pages
-from tests.utils import parametrize_id_generator, parametrize_page_repository
+from tests.utils import parametrize_id_generator, parametrize_page_repository, Waiter
 
 
 @pytest.mark.asyncio
@@ -60,10 +61,12 @@ class TestPageCrudUseCases:
         page_repository: PageRepository,
         event_bus: EventBusGateway,
     ):
+        waiter = await Waiter.start_in_background(event_bus, PAGE_CREATED)
         result = await crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
         ).do(name=name, title=title, description=description)
         assert result == page
+        await waiter.wait(timeout=0.1)
 
     @parametrize_id_generator("incremental")
     async def test_create_page_already_exists(
@@ -158,11 +161,13 @@ class TestPageCrudUseCases:
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
         )
+        waiter = await Waiter.start_in_background(event_bus, PAGE_DELETED)
         page = await create_usecase.do(name="test", title=None, description=None)
         delete_usecase = crud_pages.DeletePage(
             repository=page_repository, event_bus=event_bus
         )
         await delete_usecase.do(page.id)
+        await waiter.wait(0.1)
         get_usecase = crud_pages.GetPage(repository=page_repository)
         with pytest.raises(PageNotFoundError, match="Page not found: fakeid"):
             await get_usecase.do(page_id=page.id)

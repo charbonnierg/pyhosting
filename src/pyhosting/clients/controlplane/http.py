@@ -32,15 +32,18 @@ class BaseHTTPControlPlaneClient(ControlPlaneClient):
         return Page(**response.json()["document"])
 
     def get_page(self, id: str) -> Page:
+        """Get a page by ID."""
         response = self.http.get(f"/api/pages/{id}")
         response.raise_for_status()
         return Page(**response.json()["document"])
 
     def delete_page(self, id: str) -> None:
+        """Delete a page by ID."""
         response = self.http.delete(f"/api/pages/{id}")
         response.raise_for_status()
 
     def get_page_by_name(self, name: str) -> Page:
+        """Get a page by name."""
         response = self.http.get("/api/pages/")
         response.raise_for_status()
         for page in response.json()["documents"]:
@@ -55,6 +58,7 @@ class BaseHTTPControlPlaneClient(ControlPlaneClient):
         content: bytes,
         latest: bool = False,
     ) -> PageVersion:
+        """Publish a new page version."""
         headers = {"x-page-version": version}
         if latest:
             headers["x-page-latest"] = "1"
@@ -65,6 +69,23 @@ class BaseHTTPControlPlaneClient(ControlPlaneClient):
         )
         response.raise_for_status()
         return PageVersion(**response.json()["document"])
+
+    def get_page_version(self, id: str, version: str) -> PageVersion:
+        """Get info for a page version."""
+        response = self.http.get(f"/api/pages/{id}/versions/{version}")
+        response.raise_for_status()
+        return PageVersion(**response.json()["document"])
+
+    def delete_page_version(self, id: str, version: str) -> None:
+        """Delete a page version"""
+        response = self.http.delete(f"/api/pages/{id}/versions/{version}")
+        response.raise_for_status()
+
+    def list_page_versions(self, id: str) -> t.List[PageVersion]:
+        """List page versions."""
+        response = self.http.get(f"/api/pages/{id}/versions/")
+        response.raise_for_status()
+        return [PageVersion(**item) for item in response.json()["documents"]]
 
 
 class HTTPControlPlaneClient(BaseHTTPControlPlaneClient):

@@ -25,6 +25,10 @@ class ControlPlaneClient(t.Protocol):
         """Create a new page."""
         raise NotImplementedError  # pragma: no cover
 
+    def delete_page(self, id: str) -> None:
+        """Delete a page."""
+        raise NotImplementedError  # pragma: no cover
+
     def publish_page_version(
         self,
         id: str,
@@ -33,4 +37,16 @@ class ControlPlaneClient(t.Protocol):
         latest: bool = False,
     ) -> PageVersion:
         """Publish a new page version."""
+        raise NotImplementedError  # pragma: no cover
+
+    def delete_page_version(
+        self,
+        id: str,
+        version: str,
+    ) -> None:
+        """Delete a page version."""
+        raise NotImplementedError  # pragma: no cover
+
+    def list_page_versions(self, id: str) -> t.List[PageVersion]:
+        """List page versions."""
         raise NotImplementedError  # pragma: no cover

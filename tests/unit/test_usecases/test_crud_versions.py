@@ -3,6 +3,8 @@ from hashlib import md5
 import pytest
 from genid import IDGenerator
 
+from pyhosting.domain.events import PAGE_VERSION_CREATED, PAGE_VERSION_DELETED
+from pyhosting.domain.events.page_versions import PageVersionCreated, PageVersionDeleted
 from pyhosting.domain.entities import PageVersion
 from pyhosting.domain.errors import (
     CannotDeleteLatestVersionError,
@@ -17,6 +19,7 @@ from tests.utils import (
     parametrize_id_generator,
     parametrize_page_repository,
     parametrize_page_version_repository,
+    Waiter,
 )
 
 
@@ -27,14 +30,14 @@ class TestPageCrudUseCases:
     async def test_list_versions_page_not_found(
         self, page_repository: PageRepository, version_repository: PageVersionRepository
     ):
-        list_uscase = crud_versions.ListPagesVersions(
+        list_usecase = crud_versions.ListPagesVersions(
             repository=version_repository,
             get_page=crud_pages.GetPage(repository=page_repository),
         )
         with pytest.raises(
             PageNotFoundError, match="Page not found: not-an-existing-id"
         ):
-            await list_uscase.do(page_id="not-an-existing-id")
+            await list_usecase.do(page_id="not-an-existing-id")
 
     @parametrize_id_generator("constant", value="fakeid")
     async def test_list_versions_empty(
@@ -115,8 +118,13 @@ class TestPageCrudUseCases:
             update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
             clock=lambda: 0,
         )
-        await publish_usecase.do(
+        waiter = await Waiter.start_in_background(event_bus, PAGE_VERSION_CREATED)
+        version = await publish_usecase.do(
             page_id="fakeid", page_version="1", content=b"<html></html>", latest=False
+        )
+        event = await waiter.wait(0.1)
+        assert event == PageVersionCreated(
+            document=version, content=b"<html></html>", latest=False
         )
         result = await get_page_usecase.do(page_id="fakeid")
         assert result.latest_version is None
@@ -154,8 +162,13 @@ class TestPageCrudUseCases:
             update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
             clock=lambda: 0,
         )
-        await publish_usecase.do(
+        waiter = await Waiter.start_in_background(event_bus, PAGE_VERSION_CREATED)
+        version = await publish_usecase.do(
             page_id="fakeid", page_version="1", content=b"<html></html>", latest=True
+        )
+        event = await waiter.wait()
+        assert event == PageVersionCreated(
+            document=version, content=b"<html></html>", latest=True
         )
         result = await get_page_usecase.do(page_id="fakeid")
         assert result.latest_version == "1"
@@ -365,8 +378,12 @@ class TestPageCrudUseCases:
             page_id="fakeid", page_version="2", content=b"<html></html>", latest=True
         )
 
+        waiter = await Waiter.start_in_background(event_bus, PAGE_VERSION_DELETED)
         await delete_version_usecase.do(page_id="fakeid", page_version="1")
-
+        event = await waiter.wait(0.1)
+        assert event == PageVersionDeleted(
+            page_id="fakeid", page_name="test", version="1"
+        )
         get_latest_version_usecase = crud_versions.GetLatestPageVersion(
             version_repository, get_page_usecase
         )
