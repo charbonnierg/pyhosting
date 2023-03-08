@@ -15,31 +15,35 @@ class BaseHTTPControlPlaneClient(ControlPlaneClient):
         """List pages"""
         response = self.http.get("/api/pages/")
         response.raise_for_status()
-        return [Page(**item) for item in response.json()["pages"]]
+        return [Page(**item) for item in response.json()["documents"]]
 
     def create_page(
         self,
         name: str,
         title: t.Optional[str] = None,
         description: t.Optional[str] = None,
-    ) -> str:
+    ) -> Page:
         """Create a new page."""
         response = self.http.post(
             "/api/pages/",
             json={"title": title, "description": description, "name": name},
         )
         response.raise_for_status()
-        return str(response.json()["id"])
+        return Page(**response.json()["document"])
 
     def get_page(self, id: str) -> Page:
         response = self.http.get(f"/api/pages/{id}")
         response.raise_for_status()
-        return Page(**response.json())
+        return Page(**response.json()["document"])
+
+    def delete_page(self, id: str) -> None:
+        response = self.http.delete(f"/api/pages/{id}")
+        response.raise_for_status()
 
     def get_page_by_name(self, name: str) -> Page:
         response = self.http.get("/api/pages/")
         response.raise_for_status()
-        for page in response.json()["pages"]:
+        for page in response.json()["documents"]:
             if page["name"].lower() == name.lower():
                 return Page(**page)
         raise PageNotFoundError(name)
@@ -60,7 +64,7 @@ class BaseHTTPControlPlaneClient(ControlPlaneClient):
             content=content,
         )
         response.raise_for_status()
-        return PageVersion(**response.json())
+        return PageVersion(**response.json()["document"])
 
 
 class HTTPControlPlaneClient(BaseHTTPControlPlaneClient):

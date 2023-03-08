@@ -41,11 +41,11 @@ def create(
 ) -> None:
     client = HTTPControlPlaneClient()
     try:
-        page_id = client.create_page(name=name, title=title, description=description)
-    except httpx.HTTPError as exc:
-        typer.echo(exc.request.content)
+        page = client.create_page(name=name, title=title, description=description)
+    except httpx.HTTPStatusError as exc:
+        typer.echo(exc.response.content)
         raise typer.Exit(1)
-    typer.echo(json.dumps({"id": page_id}, indent=2))
+    typer.echo(json.dumps({"id": page.id}, indent=2))
     raise typer.Exit(0)
 
 
@@ -59,8 +59,8 @@ def publish(
     client = HTTPControlPlaneClient()
     try:
         page = client.get_page_by_name(name=name)
-    except httpx.HTTPError as exc:
-        typer.echo(exc.request.content)
+    except httpx.HTTPStatusError as exc:
+        typer.echo(exc.response.content)
         raise typer.Exit(1)
     # TODO: Could create a tarball if path is a directory.
     # This way we would support: .html / .tar.gz / directories with index.html

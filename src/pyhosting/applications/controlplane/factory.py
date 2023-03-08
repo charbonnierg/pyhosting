@@ -1,9 +1,10 @@
 import typing as t
 from time import time
 
+from fastapi import FastAPI
+from fastapi.routing import APIRoute
 from genid import IDGenerator, ObjectIDGenerator
-from starlette.applications import Starlette
-from starlette.routing import Mount, Route
+from starlette.routing import Mount
 
 from pyhosting.applications.dataplane.factory import create_app as create_agent_app
 from pyhosting.domain.actors import sync_blob, sync_local
@@ -37,7 +38,7 @@ def create_app(
     local_storage: t.Optional[LocalStorageGateway] = None,
     clock: t.Callable[[], int] = lambda: int(time()),
     base_url: str = "http://localhost:8000",
-) -> Starlette:
+) -> FastAPI:
     """Create  a new Control Plane starlette application.
 
     Assuming proper arguments are provided, application can be entirely deterministic.
@@ -71,27 +72,26 @@ def create_app(
             ),
         ]
     )
+    api_router = PagesAPIRouter(
+        id_generator=id_generator,
+        versions_repository=version_repository,
+        pages_repository=page_repository,
+        event_bus=event_bus,
+        clock=clock,
+    )
     # Create starlette app (ASGI)
-    app = Starlette(
+    app = FastAPI(
         routes=[
             # API Version
-            Route(
+            APIRoute(
                 "/api/version",
                 get_version,
                 methods=["GET"],
                 name="get_version",
                 include_in_schema=True,
-            ),
-            # Pages Api
-            Mount(
-                "/api/pages/",
-                PagesAPIRouter(
-                    id_generator=id_generator,
-                    versions_repository=version_repository,
-                    pages_repository=page_repository,
-                    event_bus=event_bus,
-                    clock=clock,
-                ),
+                summary="Get API version",
+                description="Returns a JSON object with a 'version' field set to pyhosting server version",
+                tags=["Version"],
             ),
             # Mount fileserver
             Mount(
@@ -106,4 +106,5 @@ def create_app(
         ],
         lifespan=actors.lifespan,
     )
+    app.include_router(api_router, prefix="/api/pages", tags=["Pages"])
     return app

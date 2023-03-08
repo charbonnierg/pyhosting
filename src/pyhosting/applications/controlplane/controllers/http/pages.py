@@ -1,10 +1,9 @@
 import typing as t
-from dataclasses import asdict
 
+from fastapi.exceptions import HTTPException
+from fastapi.routing import APIRouter
 from genid import IDGenerator
-from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
-from starlette.routing import Router
+from starlette import status
 
 from pyhosting.domain.errors import PageAlreadyExistsError, PageNotFoundError
 from pyhosting.domain.gateways import EventBusGateway
@@ -16,10 +15,16 @@ from pyhosting.domain.usecases.crud_pages import (
     ListPages,
 )
 
+from .models.pages import (
+    CreatePageOptions,
+    CreatePageResult,
+    GetPageResult,
+    ListPagesResult,
+)
 from .page_versions import PageVersionsRouter
 
 
-class PagesAPIRouter(Router):
+class PagesAPIRouter(APIRouter):
     def __init__(
         self,
         id_generator: IDGenerator,
@@ -34,85 +39,114 @@ class PagesAPIRouter(Router):
         self.pages_repository = pages_repository
         self.event_bus = event_bus
         self.clock = clock
-        self.add_route("/", self.list_pages, methods=["GET"], name="list_pages")
-        self.add_route("/", self.create_page, methods=["POST"], name="create_page")
-        self.add_route("/{page_id}", self.get_page, methods=["GET"], name="get_page")
-        self.add_route(
-            "/{page_id}", self.delete_page, methods=["DELETE"], name="delete_page"
-        )
-        self.mount(
-            "/{page_id}/versions",
-            PageVersionsRouter(
-                versions_repository=self.versions_repository,
-                pages_repository=self.pages_repository,
-                event_bus=event_bus,
-                clock=clock,
-            ),
-        )
-
-    async def get_page(self, request: Request) -> JSONResponse:
-        """Reutrn an HTTP response with an existing page infos."""
         # Prepare usecase
-        usecase = GetPage(repository=self.pages_repository)
-        # Extract path parameter
-        page_id = request.path_params["page_id"]
-        # Execute usecase
-        try:
-            result = await usecase.do(page_id=page_id)
-        except PageNotFoundError as exc:
-            # Return an HTTP error rather than raising an exception
-            return JSONResponse({"error": exc.msg}, status_code=exc.code)
-        # Return JSON representation of a page
-        return JSONResponse(asdict(result), status_code=200)
-
-    async def list_pages(self, _: Request) -> JSONResponse:
-        """Return an HTTP response with a list of existing pages."""
-        # Prepare usecase
-        usecase = ListPages(repository=self.pages_repository)
-        # Execute usecase
-        pages = await usecase.do()
-        # Return a JSON response
-        return JSONResponse(
-            {"pages": [asdict(page) for page in pages]}, status_code=200
+        self.get_page_usecase = GetPage(
+            repository=self.pages_repository,
         )
-
-    async def create_page(self, request: Request) -> JSONResponse:
-        """Return an HTTP response with either a page creation success or page creation a failure"""
-        # Prepare usecase
-        usecase = CreatePage(
+        self.create_page_usecase = CreatePage(
             id_generator=self.id_generator,
             repository=self.pages_repository,
             event_bus=self.event_bus,
         )
-        # Fetch request body
-        command = await request.json()
-        # Execute usecase with command
-        try:
-            result = await usecase.do(
-                name=command["name"],
-                title=command.get("title"),
-                description=command.get("description"),
-            )
-        except PageAlreadyExistsError as exc:
-            # Return an HTTP error instead of raising an exception
-            return JSONResponse({"error": exc.msg}, status_code=409)
-        # Return create page ID
-        return JSONResponse({"id": result.id}, status_code=201)
-
-    async def delete_page(self, request: Request) -> t.Union[Response, JSONResponse]:
-        """Return an HTTP response without content upon page deletion"""
-        # Prepare usecase
-        usecase = DeletePage(
+        self.delete_page_usecase = DeletePage(
             repository=self.pages_repository,
             event_bus=self.event_bus,
         )
-        # Prepare command using path parameter
-        page_id = request.path_params["page_id"]
+        self.list_pages_usecase = ListPages(
+            repository=self.pages_repository,
+        )
+        # Setup routes
+        self.setup()
+
+    def setup(self) -> None:
+        self.add_api_route(
+            "/",
+            self.list_pages,
+            methods=["GET"],
+            name="list_pages",
+            response_model=ListPagesResult,
+        )
+        self.add_api_route(
+            "/",
+            self.create_page,
+            methods=["POST"],
+            name="create_page",
+            response_model=CreatePageResult,
+            status_code=201,
+            responses={"409": {"description": "Page with same name already exist"}},
+        )
+        self.add_api_route(
+            "/{page_id}",
+            self.get_page,
+            methods=["GET"],
+            name="get_page",
+            response_model=GetPageResult,
+        )
+        self.add_api_route(
+            "/{page_id}",
+            self.delete_page,
+            methods=["DELETE"],
+            name="delete_page",
+            status_code=204,
+        )
+        self.include_router(
+            PageVersionsRouter(
+                versions_repository=self.versions_repository,
+                pages_repository=self.pages_repository,
+                event_bus=self.event_bus,
+                clock=self.clock,
+            ),
+            prefix="/{page_id}/versions",
+        )
+
+    async def get_page(self, page_id: str) -> GetPageResult:
+        """Get page infos."""
+        # Execute usecase
+        try:
+            page = await self.get_page_usecase.do(page_id=page_id)
+        except PageNotFoundError as exc:
+            # Return an HTTP response with a failure code
+            raise HTTPException(detail={"error": exc.msg}, status_code=exc.code)
+        # Return JSON representation of a page
+        result = GetPageResult(document=page)
+        # I don't understand how FastAPI works...
+        return result.dict()  # type: ignore[return-value]
+
+    async def list_pages(self) -> ListPagesResult:
+        """List existing pages."""
+        # Execute usecase
+        pages = await self.list_pages_usecase.do()
+        # Return a JSON response
+        result = ListPagesResult(documents=pages)
+        # I don't understand how FastAPI works
+        return result.dict()  # type: ignore[return-value]
+
+    async def create_page(self, options: CreatePageOptions) -> CreatePageResult:
+        """Return an HTTP response with either a page creation success or page creation a failure"""
         # Execute usecase with command
         try:
-            await usecase.do(page_id=page_id)
+            page = await self.create_page_usecase.do(
+                name=options.name,
+                title=options.title,
+                description=options.description,
+            )
+        except PageAlreadyExistsError as exc:
+            # Return an HTTP response with failure code
+            raise HTTPException(
+                detail={"error": exc.msg}, status_code=status.HTTP_409_CONFLICT
+            )
+        # Return create page ID
+        result = CreatePageResult(document=page)
+        # I don't understand how FastAPI works
+        return result.dict()  # type: ignore[return-value]
+
+    async def delete_page(self, page_id: str) -> None:
+        """Return an HTTP response without content upon page deletion"""
+        # Execute usecase with command
+        try:
+            await self.delete_page_usecase.do(page_id=page_id)
         except PageNotFoundError as exc:
             # Return an HTTP error when page does not exist
-            return JSONResponse({"error": exc.msg}, status_code=exc.code)
-        # Return an empty HTTP response with 204 status code
-        return Response(b"", status_code=204)
+            raise HTTPException(
+                detail={"error": exc.msg}, status_code=status.HTTP_404_NOT_FOUND
+            )

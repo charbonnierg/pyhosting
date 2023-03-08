@@ -10,16 +10,16 @@ class EventBusGateway:
     @abc.abstractmethod
     async def emit_event(self, event: t.Tuple[str, t.Type[T]], payload: T) -> None:
         """Emit an event."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @abc.abstractmethod
     async def wait_for_event(self, event: t.Tuple[str, t.Type[T]]) -> T:
         """Wait for an event"""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @abc.abstractmethod
     def watch_events(
         self, event: t.Tuple[str, t.Type[T]]
     ) -> t.AsyncContextManager[t.AsyncIterator[T]]:
         """Watch a type of event"""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover

@@ -12,6 +12,11 @@ class ConflictError(PyHostingError):
     pass
 
 
+class EmptyContentError(PyHostingError):
+    def __init__(self) -> None:
+        super().__init__(428, "Content is empty")
+
+
 class ResourceAlreadyExistsError(ConflictError):
     def __init__(self, resource: str, identifier: str) -> None:
         super().__init__(409, f"{resource.capitalize()} already exists: {identifier}")

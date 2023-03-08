@@ -6,6 +6,7 @@ from time import time
 from ..entities import PageVersion
 from ..errors import (
     CannotDeleteLatestVersionError,
+    EmptyContentError,
     VersionAlreadyExistsError,
     VersionNotFoundError,
 )
@@ -87,6 +88,8 @@ class CreatePageVersion:
         self, page_id: str, page_version: str, content: bytes, latest: bool
     ) -> PageVersion:
         """Execute usecase: Create a new page version."""
+        if not content:
+            raise EmptyContentError()
         page = await self.get_page.do(page_id=page_id)
         if await self.repository.version_exists(page_id, page_version):
             raise VersionAlreadyExistsError(page.name, page_version)

@@ -21,7 +21,7 @@ class ControlPlaneClient(t.Protocol):
         name: str,
         title: t.Optional[str] = None,
         description: t.Optional[str] = None,
-    ) -> str:
+    ) -> Page:
         """Create a new page."""
         raise NotImplementedError  # pragma: no cover
 
