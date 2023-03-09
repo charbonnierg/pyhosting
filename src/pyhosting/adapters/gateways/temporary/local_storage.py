@@ -5,7 +5,7 @@ from shutil import rmtree
 from tempfile import mkdtemp
 from weakref import finalize
 
-from ...domain.gateways import LocalStorageGateway
+from pyhosting.domain.gateways import LocalStorageGateway
 
 
 class TemporaryDirectory(LocalStorageGateway):

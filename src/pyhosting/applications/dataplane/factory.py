@@ -4,18 +4,13 @@ from logging import basicConfig
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
+from pyhosting.adapters.gateways.memory import InMemoryBlobStorage
+from pyhosting.adapters.gateways.temporary import TemporaryDirectory
+from pyhosting.core.adapters import InMemoryEventBus
+from pyhosting.core.aio import Actors
+from pyhosting.core.interfaces import EventBus
 from pyhosting.domain.actors import sync_local
-from pyhosting.domain.gateways import (
-    BlobStorageGateway,
-    EventBusGateway,
-    LocalStorageGateway,
-)
-from pyhosting.infrastructure.actors.asyncio import AsyncioActors
-from pyhosting.infrastructure.gateways.local import TemporaryDirectory
-from pyhosting.infrastructure.gateways.memory import (
-    InMemoryBlobStorage,
-    InMemoryEventBus,
-)
+from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
 
 from .controllers.http import (
     HealthCheckRouter,
@@ -26,7 +21,7 @@ from .controllers.http import (
 
 
 def create_app(
-    event_bus: t.Optional[EventBusGateway] = None,
+    event_bus: t.Optional[EventBus] = None,
     storage: t.Optional[BlobStorageGateway] = None,
     local_storage: t.Optional[LocalStorageGateway] = None,
     base_url: str = "http://localhost:8000",
@@ -39,8 +34,9 @@ def create_app(
     event_bus = event_bus or InMemoryEventBus()
     blob_storage = storage or InMemoryBlobStorage()
     local_storage = local_storage or TemporaryDirectory()
-    actors = AsyncioActors(
-        [
+    actors = Actors(
+        bus=event_bus,
+        actors=[
             sync_local.GenerateDefaultIndexOnPageCreated(
                 local_storage=local_storage, base_url=base_url
             ),
@@ -50,7 +46,6 @@ def create_app(
                 local_storage=local_storage, blob_storage=blob_storage
             ),
         ],
-        event_bus=event_bus,
     )
     app = Starlette(
         routes=[
@@ -62,6 +57,6 @@ def create_app(
                 LatestFileserver(local_storage),
             ),
         ],
-        lifespan=actors.lifespan,
+        lifespan=actors._lifespan,
     )
     return app

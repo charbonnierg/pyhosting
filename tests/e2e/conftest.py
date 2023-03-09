@@ -5,14 +5,14 @@ from genid import IDGenerator
 
 from pyhosting.applications.controlplane.factory import create_app
 from pyhosting.clients.controlplane.testing import HTTPTestClient
-from pyhosting.domain.gateways import EventBusGateway
+from pyhosting.core.interfaces import EventBus
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
 
 
 @pytest.fixture
 def client(
     id_generator: IDGenerator,
-    event_bus: EventBusGateway,
+    event_bus: EventBus,
     page_repository: PageRepository,
     version_repository: PageVersionRepository,
     clock: t.Callable[[], int],

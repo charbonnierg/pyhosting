@@ -1,7 +1,8 @@
 import typing as t
 from dataclasses import dataclass
 from hashlib import md5
-from time import time
+
+from pyhosting.core.interfaces import EventBus
 
 from ..entities import PageVersion
 from ..errors import (
@@ -16,7 +17,6 @@ from ..events.page_versions import (
     PageVersionCreated,
     PageVersionDeleted,
 )
-from ..gateways import EventBusGateway
 from ..repositories import PageVersionRepository
 from .crud_pages import GetPage, UpdateLatestPageVersion
 
@@ -54,7 +54,7 @@ class GetLatestPageVersion:
         version = await self.repository.get_version(
             page_id=page_id, version=page.latest_version
         )
-        # QUESTION: This should never happend, because version is defined on the page entity
+        # QUESTION: This should never happen, because version is defined on the page entity
         # Should we test this line ?
         if version is None:
             raise VersionNotFoundError(page.name, page.latest_version)
@@ -79,10 +79,10 @@ class CreatePageVersion:
     """Use case for creating a new page version."""
 
     repository: PageVersionRepository
-    event_bus: EventBusGateway
+    event_bus: EventBus
     get_page: GetPage
     update_latest_version: UpdateLatestPageVersion
-    clock: t.Callable[[], int] = lambda: int(time())
+    clock: t.Callable[[], int]
 
     async def do(
         self, page_id: str, page_version: str, content: bytes, latest: bool
@@ -106,7 +106,7 @@ class CreatePageVersion:
         if latest:
             await self.update_latest_version.do(page_id, version)
         # Emit a page version created event holding version document but NOT version content
-        await self.event_bus.emit_event(
+        await self.event_bus.publish(
             PAGE_VERSION_CREATED,
             PageVersionCreated(document=version, content=content, latest=latest),
         )
@@ -118,7 +118,7 @@ class DeletePageVersion:
     """Use case for deleting an existing page version."""
 
     repository: PageVersionRepository
-    event_bus: EventBusGateway
+    event_bus: EventBus
     get_page: GetPage
     update_latest_version: UpdateLatestPageVersion
 
@@ -130,7 +130,7 @@ class DeletePageVersion:
         deleted = await self.repository.delete_version(page_id, page_version)
         if not deleted:
             raise VersionNotFoundError(page.name, page_version)
-        await self.event_bus.emit_event(
+        await self.event_bus.publish(
             PAGE_VERSION_DELETED,
             PageVersionDeleted(
                 page_id=page_id,

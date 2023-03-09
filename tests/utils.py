@@ -3,7 +3,8 @@ import typing as t
 
 import pytest
 
-from pyhosting.domain.gateways.event_bus import EventBusGateway
+from pyhosting.core.entities import Event, Filter
+from pyhosting.core.interfaces import EventBus
 
 F = t.TypeVar("F", bound=t.Callable[..., t.Any])
 T = t.TypeVar("T")
@@ -97,18 +98,28 @@ def parametrize_clock(clock: t.Callable[[], int]) -> t.Callable[[F], F]:
 
 
 class Waiter(t.Generic[T]):
-    def __init__(self, bus: EventBusGateway, event: t.Tuple[str, t.Type[T]]) -> None:
+    def __init__(self, bus: EventBus, event: t.Union[Event[T], Filter[T]]) -> None:
+        """Do not use __init__ constructor directly. Instead of .create() classmethod."""
         self.event = event
         self.bus = bus
-        self.task = asyncio.create_task(bus.wait_for_event(event))
+        self.task = asyncio.create_task(self.__start_in_foreground(event))
+
+    async def __start_in_foreground(self, event: t.Union[Event[T], Filter[T]]) -> T:
+        """Wait for a single event."""
+        async with self.bus.events(event, None) as observer:
+            async for item in observer:
+                return item.data
+        raise ValueError("No event received")
 
     @classmethod
-    async def start_in_background(
-        cls, bus: EventBusGateway, event: t.Tuple[str, t.Type[T]]
+    async def create(
+        cls, bus: EventBus, event: t.Union[Event[T], Filter[T]]
     ) -> "Waiter[T]":
+        """Create and start waiter in background."""
         waiter = cls(bus, event)
         await asyncio.sleep(0)
         return waiter
 
     async def wait(self, timeout: t.Optional[float] = 5) -> T:
+        """Wait until revent is received"""
         return await asyncio.wait_for(self.task, timeout=timeout)

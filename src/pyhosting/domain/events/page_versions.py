@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from pyhosting.core.entities import Event
+
 from ..entities import PageVersion
 
 
@@ -12,7 +14,7 @@ class PageVersionCreated:
     latest: bool
 
 
-PAGE_VERSION_CREATED = ("page-version-created", PageVersionCreated)
+PAGE_VERSION_CREATED = Event("page-version-created", PageVersionCreated)
 
 
 @dataclass
@@ -24,7 +26,7 @@ class PageVersionUploaded:
     version: str
 
 
-PAGE_VERSION_UPLOADED = ("page-version-uploaded", PageVersionUploaded)
+PAGE_VERSION_UPLOADED = Event("page-version-uploaded", PageVersionUploaded)
 
 
 @dataclass
@@ -36,4 +38,4 @@ class PageVersionDeleted:
     version: str
 
 
-PAGE_VERSION_DELETED = ("page-version-deleted", PageVersionDeleted)
+PAGE_VERSION_DELETED = Event("page-version-deleted", PageVersionDeleted)

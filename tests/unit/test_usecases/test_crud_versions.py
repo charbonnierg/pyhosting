@@ -3,8 +3,7 @@ from hashlib import md5
 import pytest
 from genid import IDGenerator
 
-from pyhosting.domain.events import PAGE_VERSION_CREATED, PAGE_VERSION_DELETED
-from pyhosting.domain.events.page_versions import PageVersionCreated, PageVersionDeleted
+from pyhosting.core.interfaces import EventBus
 from pyhosting.domain.entities import PageVersion
 from pyhosting.domain.errors import (
     CannotDeleteLatestVersionError,
@@ -12,14 +11,15 @@ from pyhosting.domain.errors import (
     VersionAlreadyExistsError,
     VersionNotFoundError,
 )
-from pyhosting.domain.gateways import EventBusGateway
+from pyhosting.domain.events import PAGE_VERSION_CREATED, PAGE_VERSION_DELETED
+from pyhosting.domain.events.page_versions import PageVersionCreated, PageVersionDeleted
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
 from pyhosting.domain.usecases import crud_pages, crud_versions
 from tests.utils import (
+    Waiter,
     parametrize_id_generator,
     parametrize_page_repository,
     parametrize_page_version_repository,
-    Waiter,
 )
 
 
@@ -45,7 +45,7 @@ class TestPageCrudUseCases:
         id_generator: IDGenerator,
         page_repository: PageRepository,
         version_repository: PageVersionRepository,
-        event_bus: EventBusGateway,
+        event_bus: EventBus,
     ):
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
@@ -64,7 +64,7 @@ class TestPageCrudUseCases:
         id_generator: IDGenerator,
         page_repository: PageRepository,
         version_repository: PageVersionRepository,
-        event_bus: EventBusGateway,
+        event_bus: EventBus,
     ):
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
@@ -101,7 +101,7 @@ class TestPageCrudUseCases:
         id_generator: IDGenerator,
         page_repository: PageRepository,
         version_repository: PageVersionRepository,
-        event_bus: EventBusGateway,
+        event_bus: EventBus,
     ):
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
@@ -118,7 +118,7 @@ class TestPageCrudUseCases:
             update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
             clock=lambda: 0,
         )
-        waiter = await Waiter.start_in_background(event_bus, PAGE_VERSION_CREATED)
+        waiter = await Waiter.create(event_bus, PAGE_VERSION_CREATED)
         version = await publish_usecase.do(
             page_id="fakeid", page_version="1", content=b"<html></html>", latest=False
         )
@@ -145,7 +145,7 @@ class TestPageCrudUseCases:
         id_generator: IDGenerator,
         page_repository: PageRepository,
         version_repository: PageVersionRepository,
-        event_bus: EventBusGateway,
+        event_bus: EventBus,
     ):
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
@@ -162,7 +162,7 @@ class TestPageCrudUseCases:
             update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
             clock=lambda: 0,
         )
-        waiter = await Waiter.start_in_background(event_bus, PAGE_VERSION_CREATED)
+        waiter = await Waiter.create(event_bus, PAGE_VERSION_CREATED)
         version = await publish_usecase.do(
             page_id="fakeid", page_version="1", content=b"<html></html>", latest=True
         )
@@ -201,7 +201,7 @@ class TestPageCrudUseCases:
         id_generator: IDGenerator,
         page_repository: PageRepository,
         version_repository: PageVersionRepository,
-        event_bus: EventBusGateway,
+        event_bus: EventBus,
     ):
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
@@ -220,7 +220,7 @@ class TestPageCrudUseCases:
         id_generator: IDGenerator,
         page_repository: PageRepository,
         version_repository: PageVersionRepository,
-        event_bus: EventBusGateway,
+        event_bus: EventBus,
     ):
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
@@ -241,7 +241,7 @@ class TestPageCrudUseCases:
         id_generator: IDGenerator,
         page_repository: PageRepository,
         version_repository: PageVersionRepository,
-        event_bus: EventBusGateway,
+        event_bus: EventBus,
     ):
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
@@ -271,7 +271,7 @@ class TestPageCrudUseCases:
         self,
         page_repository: PageRepository,
         version_repository: PageVersionRepository,
-        event_bus: EventBusGateway,
+        event_bus: EventBus,
     ):
         get_page_usecase = crud_pages.GetPage(page_repository)
         delete_version = crud_versions.DeletePageVersion(
@@ -291,7 +291,7 @@ class TestPageCrudUseCases:
         id_generator: IDGenerator,
         page_repository: PageRepository,
         version_repository: PageVersionRepository,
-        event_bus: EventBusGateway,
+        event_bus: EventBus,
     ):
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
@@ -313,7 +313,7 @@ class TestPageCrudUseCases:
         id_generator: IDGenerator,
         page_repository: PageRepository,
         version_repository: PageVersionRepository,
-        event_bus: EventBusGateway,
+        event_bus: EventBus,
     ):
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
@@ -348,7 +348,7 @@ class TestPageCrudUseCases:
         id_generator: IDGenerator,
         page_repository: PageRepository,
         version_repository: PageVersionRepository,
-        event_bus: EventBusGateway,
+        event_bus: EventBus,
     ):
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
@@ -378,7 +378,7 @@ class TestPageCrudUseCases:
             page_id="fakeid", page_version="2", content=b"<html></html>", latest=True
         )
 
-        waiter = await Waiter.start_in_background(event_bus, PAGE_VERSION_DELETED)
+        waiter = await Waiter.create(event_bus, PAGE_VERSION_DELETED)
         await delete_version_usecase.do(page_id="fakeid", page_version="1")
         event = await waiter.wait(0.1)
         assert event == PageVersionDeleted(

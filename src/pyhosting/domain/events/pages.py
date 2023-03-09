@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from pyhosting.core.entities import Event
+
 from ..entities import Page
 
 
@@ -10,7 +12,7 @@ class PageCreated:
     document: Page
 
 
-PAGE_CREATED = ("page-created", PageCreated)
+PAGE_CREATED = Event("page-created", PageCreated)
 
 
 @dataclass
@@ -21,4 +23,4 @@ class PageDeleted:
     name: str
 
 
-PAGE_DELETED = ("page-deleted", PageDeleted)
+PAGE_DELETED = Event("page-deleted", PageDeleted)

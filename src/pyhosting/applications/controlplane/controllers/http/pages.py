@@ -5,8 +5,8 @@ from fastapi.routing import APIRouter
 from genid import IDGenerator
 from starlette import status
 
+from pyhosting.core.interfaces import EventBus
 from pyhosting.domain.errors import PageAlreadyExistsError, PageNotFoundError
-from pyhosting.domain.gateways import EventBusGateway
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
 from pyhosting.domain.usecases.crud_pages import (
     CreatePage,
@@ -30,7 +30,7 @@ class PagesAPIRouter(APIRouter):
         id_generator: IDGenerator,
         versions_repository: PageVersionRepository,
         pages_repository: PageRepository,
-        event_bus: EventBusGateway,
+        event_bus: EventBus,
         clock: t.Callable[[], int],
     ) -> None:
         super().__init__(redirect_slashes=True)

@@ -1,8 +1,8 @@
 import pytest
 
 from pyhosting.clients.controlplane.testing import HTTPTestClient
+from pyhosting.core.interfaces import EventBus
 from pyhosting.domain.events import PAGE_VERSION_CREATED, PAGE_VERSION_UPLOADED
-from pyhosting.domain.gateways.event_bus import EventBusGateway
 from tests.utils import Waiter, parametrize_clock, parametrize_id_generator
 
 TEST_CONTENT = "<html><body></body></html>"
@@ -13,7 +13,7 @@ TEST_CONTENT_MD5 = "b256d97fbb697428b7a1286ea33539c0"
 @parametrize_clock(lambda: 0)
 @pytest.mark.asyncio
 async def test_create_page_and_publish_version_then_expect_pages(
-    client: HTTPTestClient, event_bus: EventBusGateway
+    client: HTTPTestClient, event_bus: EventBus
 ) -> None:
     """Check response from POST /pages/{page_id}/versions/."""
     # Start by creating a new page
@@ -23,8 +23,8 @@ async def test_create_page_and_publish_version_then_expect_pages(
     assert page_response.status_code == 200
     assert "Start by publishing a new version" in page_response.content.decode()
     # Create a waiter in background
-    created_waiter = await Waiter.start_in_background(event_bus, PAGE_VERSION_CREATED)
-    uploaded_waiter = await Waiter.start_in_background(event_bus, PAGE_VERSION_UPLOADED)
+    created_waiter = await Waiter.create(event_bus, PAGE_VERSION_CREATED)
+    uploaded_waiter = await Waiter.create(event_bus, PAGE_VERSION_UPLOADED)
     # Create a new page version
     client.publish_page_version("fakeid", "1", TEST_CONTENT.encode(), latest=True)
     # Expect event to be emitted

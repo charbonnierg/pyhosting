@@ -5,21 +5,16 @@ import pytest
 from _pytest.fixtures import SubRequest
 from genid import IDGenerator, generator
 
-from pyhosting.domain.gateways import (
-    BlobStorageGateway,
-    EventBusGateway,
-    LocalStorageGateway,
-)
-from pyhosting.domain.repositories import PageRepository, PageVersionRepository
-from pyhosting.infrastructure.gateways.local import TemporaryDirectory
-from pyhosting.infrastructure.gateways.memory import (
-    InMemoryBlobStorage,
-    InMemoryEventBus,
-)
-from pyhosting.infrastructure.repositories.memory import (
+from pyhosting.adapters.gateways.memory import InMemoryBlobStorage
+from pyhosting.adapters.gateways.temporary import TemporaryDirectory
+from pyhosting.adapters.repositories.memory import (
     InMemoryPageRepository,
     InMemoryPageVersionRepository,
 )
+from pyhosting.core.adapters import InMemoryEventBus
+from pyhosting.core.interfaces import EventBus
+from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
+from pyhosting.domain.repositories import PageRepository, PageVersionRepository
 
 
 @pytest.fixture
@@ -39,7 +34,7 @@ def id_generator(request: SubRequest) -> IDGenerator:
 
 
 @pytest.fixture
-def event_bus(request: SubRequest) -> EventBusGateway:
+def event_bus(request: SubRequest) -> EventBus:
     """Create an event bus to use within tests."""
     param = getattr(request, "param", "memory")
     if isinstance(param, tuple):

@@ -3,10 +3,11 @@ from dataclasses import dataclass
 
 from genid import IDGenerator
 
+from pyhosting.core.interfaces import EventBus
+
 from ..entities import Page, PageVersion
 from ..errors import PageAlreadyExistsError, PageNotFoundError
 from ..events.pages import PAGE_CREATED, PAGE_DELETED, PageCreated, PageDeleted
-from ..gateways import EventBusGateway
 from ..repositories import PageRepository
 
 
@@ -52,7 +53,7 @@ class CreatePage:
 
     id_generator: IDGenerator
     repository: PageRepository
-    event_bus: EventBusGateway
+    event_bus: EventBus
 
     async def do(
         self,
@@ -71,7 +72,7 @@ class CreatePage:
             latest_version=None,
         )
         await self.repository.create_page(page)
-        await self.event_bus.emit_event(PAGE_CREATED, PageCreated(document=page))
+        await self.event_bus.publish(PAGE_CREATED, PageCreated(document=page))
         return page
 
 
@@ -80,7 +81,7 @@ class DeletePage:
     """Use case for deleting an existing page."""
 
     repository: PageRepository
-    event_bus: EventBusGateway
+    event_bus: EventBus
 
     async def do(self, page_id: str) -> None:
         """Delete a page"""
@@ -88,6 +89,6 @@ class DeletePage:
         if page is None:
             raise PageNotFoundError(page_id)
         await self.repository.delete_page(page_id)
-        await self.event_bus.emit_event(
+        await self.event_bus.publish(
             PAGE_DELETED, PageDeleted(id=page.id, name=page.name)
         )

@@ -2,13 +2,21 @@ from pathlib import Path
 
 import pytest
 
+from pyhosting.core.adapters import InMemoryMessage as Msg
 from pyhosting.domain.actors import sync_local
 from pyhosting.domain.entities import Page
 from pyhosting.domain.events.page_versions import (
+    PAGE_VERSION_DELETED,
+    PAGE_VERSION_UPLOADED,
     PageVersionDeleted,
     PageVersionUploaded,
 )
-from pyhosting.domain.events.pages import PageCreated, PageDeleted
+from pyhosting.domain.events.pages import (
+    PAGE_CREATED,
+    PAGE_DELETED,
+    PageCreated,
+    PageDeleted,
+)
 from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
 
 
@@ -22,15 +30,18 @@ class TestSyncLocalActors:
         )
         default_path = local_storage.get_latest_path_or_default("test")
         assert not Path(default_path).exists()
-        await actor.process_event(
-            PageCreated(
-                document=Page(
-                    id="testid",
-                    name="test",
-                    title="Test App",
-                    description="",
-                    latest_version=None,
-                )
+        await actor.handler(
+            Msg(
+                PAGE_CREATED,
+                PageCreated(
+                    document=Page(
+                        id="testid",
+                        name="test",
+                        title="Test App",
+                        description="",
+                        latest_version=None,
+                    )
+                ),
             )
         )
         assert Path(default_path).is_dir()
@@ -48,7 +59,12 @@ class TestSyncLocalActors:
             local_storage.get_version_path("test", "2")
         ).is_dir()
         actor = sync_local.CleanLocalStorageOnPageDeleted(local_storage)
-        await actor.process_event(PageDeleted(id="testid", name="test"))
+        await actor.handler(
+            Msg(
+                PAGE_DELETED,
+                PageDeleted(id="testid", name="test"),
+            )
+        )
         assert not local_storage.root.joinpath(
             local_storage.get_version_path("test", "1")
         ).is_dir()
@@ -67,8 +83,11 @@ class TestSyncLocalActors:
         actor = sync_local.CleanLocalStorageOnVersionDeleted(
             local_storage=local_storage
         )
-        await actor.process_event(
-            PageVersionDeleted(page_id="testid", page_name="test", version="1")
+        await actor.handler(
+            Msg(
+                PAGE_VERSION_DELETED,
+                PageVersionDeleted(page_id="testid", page_name="test", version="1"),
+            )
         )
         assert not local_storage.root.joinpath(
             local_storage.get_version_path("test", "1")
@@ -87,11 +106,14 @@ class TestSyncLocalActors:
             local_storage=local_storage,
             blob_storage=blob_storage,
         )
-        await actor.process_event(
-            PageVersionUploaded(
-                page_id="testid",
-                page_name="test",
-                version="1",
+        await actor.handler(
+            Msg(
+                PAGE_VERSION_UPLOADED,
+                PageVersionUploaded(
+                    page_id="testid",
+                    page_name="test",
+                    version="1",
+                ),
             )
         )
         assert (

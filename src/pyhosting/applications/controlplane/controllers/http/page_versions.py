@@ -6,8 +6,8 @@ from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from pyhosting.core.interfaces import EventBus
 from pyhosting.domain.errors import EmptyContentError, ResourceNotFoundError
-from pyhosting.domain.gateways import EventBusGateway
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
 from pyhosting.domain.usecases import crud_pages, crud_versions
 
@@ -23,7 +23,7 @@ class PageVersionsRouter(APIRouter):
         self,
         versions_repository: PageVersionRepository,
         pages_repository: PageRepository,
-        event_bus: EventBusGateway,
+        event_bus: EventBus,
         clock: t.Callable[[], int],
     ) -> None:
         super().__init__(redirect_slashes=True, tags=["Pages Versions"])
