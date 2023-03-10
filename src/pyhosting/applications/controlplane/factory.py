@@ -13,9 +13,8 @@ from pyhosting.adapters.repositories.memory import (
     InMemoryPageVersionRepository,
 )
 from pyhosting.applications.dataplane.factory import create_app as create_agent_app
-from pyhosting.core.adapters import InMemoryEventBus
-from pyhosting.core.aio import Actors
-from pyhosting.core.interfaces import EventBus
+from pyhosting.core import AsyncioActors, EventBus
+from pyhosting.core.adapters.memory import InMemoryEventBus
 from pyhosting.domain.actors import sync_blob, sync_local
 from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
@@ -44,7 +43,7 @@ def create_app(
     event_bus = event_bus or InMemoryEventBus()
     blob_storage = storage or InMemoryBlobStorage()
     local_storage = local_storage or TemporaryDirectory()
-    actors = Actors(
+    actors = AsyncioActors(
         bus=event_bus,
         actors=[
             sync_blob.CleanBlobStorageOnPageDelete(storage=blob_storage),
@@ -99,7 +98,7 @@ def create_app(
                 ),
             ),
         ],
-        lifespan=actors._lifespan,
+        lifespan=lambda _: actors,
     )
     app.include_router(api_router, prefix="/api/pages", tags=["Pages"])
     return app

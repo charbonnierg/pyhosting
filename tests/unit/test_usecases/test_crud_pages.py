@@ -3,7 +3,7 @@ import typing as t
 import pytest
 from genid import IDGenerator
 
-from pyhosting.core.interfaces import EventBus
+from pyhosting.core import EventBus
 from pyhosting.domain.entities import Page, PageVersion
 from pyhosting.domain.errors import PageAlreadyExistsError, PageNotFoundError
 from pyhosting.domain.events import PAGE_CREATED, PAGE_DELETED

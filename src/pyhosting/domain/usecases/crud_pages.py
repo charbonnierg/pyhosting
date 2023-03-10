@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from genid import IDGenerator
 
-from pyhosting.core.interfaces import EventBus
+from pyhosting.core import EventBus
 
 from ..entities import Page, PageVersion
 from ..errors import PageAlreadyExistsError, PageNotFoundError

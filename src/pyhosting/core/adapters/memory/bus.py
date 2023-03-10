@@ -5,15 +5,23 @@ from contextlib import asynccontextmanager
 
 from genid.generators import NUIDGenerator
 
-from ..entities import Command, Event, Filter, Queue
-from ..interfaces import EventBus, Job, Message, Request
+from pyhosting.core import (
+    Command,
+    EventBus,
+    Filter,
+    Job,
+    Message,
+    Queue,
+    Request,
+    StaticEvent,
+)
 
 T = t.TypeVar("T")
 ReplyT = t.TypeVar("ReplyT")
 
 
 class InMemoryMessage(Message[T]):
-    def __init__(self, event: Event[T], data: T) -> None:
+    def __init__(self, event: StaticEvent[T], data: T) -> None:
         self._event = event
         self._data = data
 
@@ -22,7 +30,7 @@ class InMemoryMessage(Message[T]):
         return self.event.name
 
     @property
-    def event(self) -> Event[T]:
+    def event(self) -> StaticEvent[T]:
         return self._event
 
     @property
@@ -52,12 +60,12 @@ class InMemoryRequest(Request[T, ReplyT]):
         return self._command
 
     @property
-    def event(self) -> Event[T]:
-        return Event(self._command.name, self._command.schema)
+    def event(self) -> StaticEvent[T]:
+        return StaticEvent(self._command.name, self._command.schema)
 
     @property
-    def reply_event(self) -> Event[ReplyT]:
-        return Event(self._reply, self._command.reply_schema)
+    def reply_event(self) -> StaticEvent[ReplyT]:
+        return StaticEvent(self._reply, self._command.reply_schema)
 
     @property
     def data(self) -> T:
@@ -83,7 +91,7 @@ class InMemoryEventBus(EventBus):
     def __init__(self) -> None:
         self.observers: t.List[
             t.Tuple[
-                t.Union[Event[t.Any], Filter[t.Any]],
+                t.Union[StaticEvent[t.Any], Filter[t.Any]],
                 str,
                 AIOQueue[Message[t.Any]],
             ],
@@ -107,7 +115,7 @@ class InMemoryEventBus(EventBus):
                 return event
         raise ValueError("No reply received")
 
-    async def publish(self, event: Event[T], payload: T) -> None:
+    async def publish(self, event: StaticEvent[T], payload: T) -> None:
         msg = InMemoryMessage(event, payload)
         self.__notify_event_observers(msg)
 
@@ -123,13 +131,13 @@ class InMemoryEventBus(EventBus):
         msg = await wait_for(self.__request_event(request), timeout=timeout)
         return msg.data
 
-    def __notify_event_observers(self, msg: Message[T]) -> None:
+    def __notify_event_observers(self, msg: InMemoryMessage[T]) -> None:
         """Emit an event."""
         queues_processed: t.Set[str] = set()
         for target, queue, observer in self.observers:
             if queue and queue in queues_processed:
                 continue
-            if not match_subject(msg.subject, target.subject):
+            if not match_tokens(msg.subject.split("."), target.tokens):
                 continue
             try:
                 observer.put_nowait(msg)
@@ -139,13 +147,13 @@ class InMemoryEventBus(EventBus):
                 if queue:
                     queues_processed.add(queue)
 
-    def __notify_command_observers(self, request: Request[T, ReplyT]) -> None:
+    def __notify_command_observers(self, request: InMemoryRequest[T, ReplyT]) -> None:
         """Emit an event."""
         queues_processed: t.Set[str] = set()
         for target, queue, observer in self.command_observers:
             if queue and queue in queues_processed:
                 continue
-            if not match_subject(request.subject, target.subject):
+            if not match_tokens(request.subject.split("."), target.tokens):
                 continue
             try:
                 observer.put_nowait(request)
@@ -158,7 +166,7 @@ class InMemoryEventBus(EventBus):
     @asynccontextmanager
     async def events(
         self,
-        event: t.Union[Event[T], Filter[T]],
+        event: t.Union[StaticEvent[T], Filter[T]],
         queue: t.Optional[str] = None,
     ) -> t.AsyncIterator[t.AsyncIterator[Message[T]]]:
         """Create a new observer, optionally within a queue."""
@@ -210,10 +218,9 @@ class InMemoryEventBus(EventBus):
         raise NotImplementedError
 
 
-def match_subject(
-    subject: str,
-    filter: str,
-    sep: str = ".",
+def match_tokens(
+    subject: t.List[str],
+    filter: t.List[str],
     match_all: str = ">",
     match_one: str = "*",
 ) -> bool:
@@ -227,15 +234,12 @@ def match_subject(
     # If both subjects are equal
     if subject == filter:
         return True
-    # Split subjects using sep character ("." by default)
-    msg_tokens = subject.split(sep)
-    total_tokens = len(msg_tokens)
-    filter_tokens = filter.split(sep)
+    total_tokens = len(subject)
     # Iterate over each token
-    for idx, token in enumerate(filter_tokens):
+    for idx, token in enumerate(subject):
         # If tokens are equal, let's continue
         try:
-            if token == msg_tokens[idx]:
+            if token == subject[idx]:
                 # Continue the iteration on next token
                 continue
         except IndexError:

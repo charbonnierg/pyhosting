@@ -2,8 +2,8 @@ from hashlib import md5
 
 import pytest
 
-from pyhosting.core.adapters import InMemoryMessage as Msg
-from pyhosting.core.interfaces import EventBus
+from pyhosting.core import EventBus
+from pyhosting.core.adapters.memory import InMemoryMessage as Msg
 from pyhosting.domain.actors import sync_blob
 from pyhosting.domain.entities import PageVersion
 from pyhosting.domain.events.page_versions import (

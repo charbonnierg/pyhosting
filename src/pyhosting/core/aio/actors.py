@@ -46,25 +46,25 @@ class ActorsInstrumentation:
     ] = lambda _, __: None
     """Observe a successful command processed"""
 
-    group_starting: t.Callable[["Actors"], None] = lambda _: None
+    group_starting: t.Callable[["AsyncioActors"], None] = lambda _: None
     """Observe group starting."""
 
-    group_started: t.Callable[["Actors"], None] = lambda _: None
+    group_started: t.Callable[["AsyncioActors"], None] = lambda _: None
     """Observe group started."""
 
-    group_stopping: t.Callable[["Actors"], None] = lambda _: None
+    group_stopping: t.Callable[["AsyncioActors"], None] = lambda _: None
     """Observe group stopping."""
 
     group_failed: t.Callable[
-        ["Actors", t.List[BaseException]], None
+        ["AsyncioActors", t.List[BaseException]], None
     ] = lambda _, __: None
     """Observe actors group failure"""
 
-    group_stopped: t.Callable[["Actors"], None] = lambda _: None
+    group_stopped: t.Callable[["AsyncioActors"], None] = lambda _: None
     """Observe actors group stopped"""
 
 
-class Actors:
+class AsyncioActors:
     """Configure a group of actors to listen to some observable.
 
     - When group is started, actors start to process observable data.
@@ -92,11 +92,7 @@ class Actors:
         self.tasks: t.List[asyncio.Task[None]] = []
         self.stack: t.Optional[AsyncExitStack] = None
 
-    def _lifespan(self, _: t.Any) -> t.AsyncContextManager["Actors"]:
-        """Used by ASGI applications."""
-        return self
-
-    async def __aenter__(self) -> "Actors":
+    async def __aenter__(self) -> "AsyncioActors":
         """Implement asynchronous context manager."""
         await self.start()
         return self
@@ -133,8 +129,8 @@ class Actors:
             """Cancel remaining actors tasks on first task completion (success or error)"""
             if task_done.cancelled():
                 observe(self._actors[self.tasks.index(task_done)])  # type: ignore[arg-type]
-            if task_done.exception():
-                for idx, task in enumerate(self.tasks):
+            elif task_done.exception():
+                for task in self.tasks:
                     if not task.done():
                         task.cancel()
 

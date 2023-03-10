@@ -6,7 +6,7 @@ from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from pyhosting.core.interfaces import EventBus
+from pyhosting.core import EventBus
 from pyhosting.domain.errors import EmptyContentError, ResourceNotFoundError
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
 from pyhosting.domain.usecases import crud_pages, crud_versions

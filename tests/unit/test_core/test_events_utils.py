@@ -1,6 +1,6 @@
 import pytest
 
-from pyhosting.core.adapters.memory.bus import match_tokens
+from pyhosting.core.utils.events import filter_match
 
 
 @pytest.mark.parametrize(
@@ -23,14 +23,14 @@ from pyhosting.core.adapters.memory.bus import match_tokens
     ],
 )
 def test_match_subject(subject: str, filter: str, match: bool):
-    assert match_tokens(subject.split("."), filter.split(".")) is match
+    assert filter_match(filter, subject) is match
+
+
+def test_match_subject_error_filter_subject_cannot_be_empty():
+    with pytest.raises(ValueError, match="Filter subject cannot be empty"):
+        filter_match("", "subject")
 
 
 def test_match_subject_error_subject_cannot_be_empty():
     with pytest.raises(ValueError, match="Subject cannot be empty"):
-        match_tokens([], ["filter"])
-
-
-def test_match_subject_error_filter_cannot_be_empty():
-    with pytest.raises(ValueError, match="Filter subject cannot be empty"):
-        match_tokens(["subject"], [""])
+        filter_match("filter", "")

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from pyhosting.core.entities import Event
+from pyhosting.core import StaticEvent
 
 from ..entities import Page
 
@@ -12,7 +12,7 @@ class PageCreated:
     document: Page
 
 
-PAGE_CREATED = Event("page-created", PageCreated)
+PAGE_CREATED = StaticEvent("page-created", PageCreated)
 
 
 @dataclass
@@ -23,4 +23,4 @@ class PageDeleted:
     name: str
 
 
-PAGE_DELETED = Event("page-deleted", PageDeleted)
+PAGE_DELETED = StaticEvent("page-deleted", PageDeleted)

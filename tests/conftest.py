@@ -11,8 +11,8 @@ from pyhosting.adapters.repositories.memory import (
     InMemoryPageRepository,
     InMemoryPageVersionRepository,
 )
-from pyhosting.core.adapters import InMemoryEventBus
-from pyhosting.core.interfaces import EventBus
+from pyhosting.core import EventBus
+from pyhosting.core.adapters.memory import InMemoryEventBus
 from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
 

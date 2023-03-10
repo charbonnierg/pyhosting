@@ -5,7 +5,7 @@ from genid import IDGenerator
 
 from pyhosting.applications.controlplane.factory import create_app
 from pyhosting.clients.controlplane.testing import HTTPTestClient
-from pyhosting.core.interfaces import EventBus
+from pyhosting.core import EventBus
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
 
 

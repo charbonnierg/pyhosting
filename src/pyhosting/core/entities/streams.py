@@ -1,7 +1,7 @@
 import typing as t
 from enum import Enum
 
-from .events import Event, Filter
+from .events import StaticEvent
 
 T = t.TypeVar("T")
 
@@ -20,7 +20,7 @@ class Stream(t.Generic[T]):
     name: str
     """The stream name"""
 
-    events: t.List[Event[T]]
+    events: t.List[StaticEvent[T]]
     """A list of events."""
 
     limit: t.Optional[int] = None
@@ -36,7 +36,7 @@ class Queue(t.Generic[T]):
     stream: Stream[T]
     """The stream associated with the consumer."""
 
-    events: t.List[t.Union[Event[T], Filter[T]]]
+    events: t.List[StaticEvent[T]]
     """A subset of events tracked by the queue."""
 
     max_pending: int

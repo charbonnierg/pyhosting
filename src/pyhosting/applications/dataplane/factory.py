@@ -6,9 +6,8 @@ from starlette.routing import Mount
 
 from pyhosting.adapters.gateways.memory import InMemoryBlobStorage
 from pyhosting.adapters.gateways.temporary import TemporaryDirectory
-from pyhosting.core.adapters import InMemoryEventBus
-from pyhosting.core.aio import Actors
-from pyhosting.core.interfaces import EventBus
+from pyhosting.core import AsyncioActors, EventBus
+from pyhosting.core.adapters.memory import InMemoryEventBus
 from pyhosting.domain.actors import sync_local
 from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
 
@@ -34,7 +33,7 @@ def create_app(
     event_bus = event_bus or InMemoryEventBus()
     blob_storage = storage or InMemoryBlobStorage()
     local_storage = local_storage or TemporaryDirectory()
-    actors = Actors(
+    actors = AsyncioActors(
         bus=event_bus,
         actors=[
             sync_local.GenerateDefaultIndexOnPageCreated(
@@ -57,6 +56,6 @@ def create_app(
                 LatestFileserver(local_storage),
             ),
         ],
-        lifespan=actors._lifespan,
+        lifespan=lambda _: actors,
     )
     return app

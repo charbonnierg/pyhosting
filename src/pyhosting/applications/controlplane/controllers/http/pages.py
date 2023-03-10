@@ -5,7 +5,7 @@ from fastapi.routing import APIRouter
 from genid import IDGenerator
 from starlette import status
 
-from pyhosting.core.interfaces import EventBus
+from pyhosting.core import EventBus
 from pyhosting.domain.errors import PageAlreadyExistsError, PageNotFoundError
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
 from pyhosting.domain.usecases.crud_pages import (

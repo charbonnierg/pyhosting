@@ -1,10 +1,12 @@
 import typing as t
 
-from ..entities import Command, Event, Filter, Queue
+from ..entities import Command, Queue
+from ..entities.events import EventSpec
 from .msg import Job, Message, Request
 
 T = t.TypeVar("T")
 ReplyT = t.TypeVar("ReplyT")
+ParamsT = t.TypeVar("ParamsT", bound=t.Mapping[str, t.Any])
 
 
 class EventBus(t.Protocol):
@@ -15,12 +17,15 @@ class EventBus(t.Protocol):
         - Request/Reply: Publish an event and wait for a reply / Subscribe to events and send reply
     """
 
-    async def publish(self, event: Event[T], payload: T) -> None:
+    async def publish(
+        self, event: EventSpec[ParamsT, T], payload: T, **kwargs: t.Any
+    ) -> None:
         """Publish an event.
 
         Arguments:
             event: The definition of event to emit.
             payload: A typed payload as indicated within event definition.
+            params: Params used to construct event subject.
 
         Returns:
             None
@@ -47,7 +52,7 @@ class EventBus(t.Protocol):
 
     def events(
         self,
-        event: t.Union[Event[T], Filter[T]],
+        event: EventSpec[ParamsT, T],
         queue: t.Optional[str] = None,
     ) -> t.AsyncContextManager[t.AsyncIterator[Message[T]]]:
         """Create an event observer.

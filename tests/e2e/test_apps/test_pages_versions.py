@@ -1,7 +1,7 @@
 import pytest
 
 from pyhosting.clients.controlplane.testing import HTTPTestClient
-from pyhosting.core.interfaces import EventBus
+from pyhosting.core import EventBus
 from pyhosting.domain.events import PAGE_VERSION_CREATED, PAGE_VERSION_UPLOADED
 from tests.utils import Waiter, parametrize_clock, parametrize_id_generator
 

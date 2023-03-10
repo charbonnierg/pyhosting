@@ -3,7 +3,7 @@ from hashlib import md5
 import pytest
 from genid import IDGenerator
 
-from pyhosting.core.interfaces import EventBus
+from pyhosting.core import EventBus
 from pyhosting.domain.entities import PageVersion
 from pyhosting.domain.errors import (
     CannotDeleteLatestVersionError,

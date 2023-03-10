@@ -2,13 +2,13 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Router
 
-from pyhosting.core.aio import Actors
+from pyhosting.core import AsyncioActors
 
 
 class HealthCheckRouter(Router):
     def __init__(
         self,
-        actors: Actors,
+        actors: AsyncioActors,
     ) -> None:
         super().__init__(redirect_slashes=True)
         self.actors = actors

@@ -3,7 +3,7 @@ import typing as t
 
 import pytest
 
-from pyhosting.core.entities import Event, Filter
+from pyhosting.core.entities import Filter, StaticEvent
 from pyhosting.core.interfaces import EventBus
 
 F = t.TypeVar("F", bound=t.Callable[..., t.Any])
@@ -98,13 +98,17 @@ def parametrize_clock(clock: t.Callable[[], int]) -> t.Callable[[F], F]:
 
 
 class Waiter(t.Generic[T]):
-    def __init__(self, bus: EventBus, event: t.Union[Event[T], Filter[T]]) -> None:
+    def __init__(
+        self, bus: EventBus, event: t.Union[StaticEvent[T], Filter[T]]
+    ) -> None:
         """Do not use __init__ constructor directly. Instead of .create() classmethod."""
         self.event = event
         self.bus = bus
         self.task = asyncio.create_task(self.__start_in_foreground(event))
 
-    async def __start_in_foreground(self, event: t.Union[Event[T], Filter[T]]) -> T:
+    async def __start_in_foreground(
+        self, event: t.Union[StaticEvent[T], Filter[T]]
+    ) -> T:
         """Wait for a single event."""
         async with self.bus.events(event, None) as observer:
             async for item in observer:
@@ -113,7 +117,7 @@ class Waiter(t.Generic[T]):
 
     @classmethod
     async def create(
-        cls, bus: EventBus, event: t.Union[Event[T], Filter[T]]
+        cls, bus: EventBus, event: t.Union[StaticEvent[T], Filter[T]]
     ) -> "Waiter[T]":
         """Create and start waiter in background."""
         waiter = cls(bus, event)

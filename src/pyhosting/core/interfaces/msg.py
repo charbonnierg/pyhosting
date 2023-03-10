@@ -1,6 +1,6 @@
 import typing as t
 
-from ..entities import Command, Event, Stream
+from ..entities import Command, StaticEvent, Stream
 
 T = t.TypeVar("T")
 ReplyT = t.TypeVar("ReplyT")
@@ -11,10 +11,10 @@ class Message(t.Protocol[T]):
 
     @property
     def subject(self) -> str:
-        ...
+        ...  # pragma: no cover
 
     @property
-    def event(self) -> Event[T]:
+    def event(self) -> StaticEvent[T]:
         ...  # pragma: no cover
 
     @property
@@ -45,15 +45,11 @@ class Job(t.Protocol[T]):
     """A Job is a container of an event which must be acknowledged."""
 
     @property
-    def subject(self) -> str:
-        ...
-
-    @property
     def stream(self) -> Stream[T]:
         ...  # pragma: no cover
 
     @property
-    def event(self) -> Event[T]:
+    def event(self) -> StaticEvent[T]:
         ...  # pragma: no cover
 
     @property

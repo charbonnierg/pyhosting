@@ -1,5 +1,7 @@
 import typing as t
 
+from .events import StaticEvent
+
 CommandT = t.TypeVar("CommandT")
 ReplyT = t.TypeVar("ReplyT")
 
@@ -23,9 +25,9 @@ class Command(t.Generic[CommandT, ReplyT]):
     """
 
     @property
-    def subject(self) -> str:
-        """Return subject"""
-        return self.name
+    def tokens(self) -> t.List[str]:
+        """Return tokens found in command name."""
+        return self.name.split(".")
 
     def __init__(
         self,

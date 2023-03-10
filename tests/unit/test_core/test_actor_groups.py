@@ -4,11 +4,9 @@ from re import escape
 
 import pytest
 
-from pyhosting.core.adapters import InMemoryEventBus
-from pyhosting.core.aio import Actors
-from pyhosting.core.entities import Actor, Event
+from pyhosting.core import Actor, AsyncioActors, Message, StaticEvent
+from pyhosting.core.adapters.memory import InMemoryEventBus
 from pyhosting.core.errors import ExceptionGroup
-from pyhosting.core.interfaces import Message
 
 T = t.TypeVar("T")
 
@@ -18,7 +16,7 @@ class MockActor(Actor[T]):
 
     def __init__(
         self,
-        event: Event[T],
+        event: StaticEvent[T],
         process: t.Optional[
             t.Callable[[Message[T]], t.Coroutine[None, None, None]]
         ] = None,
@@ -51,19 +49,19 @@ class MockActor(Actor[T]):
 @pytest.mark.asyncio
 class TestActorsGroup:
     async def test_actors_group_start_idempotent(self):
-        async with Actors(InMemoryEventBus(), []) as group:
+        async with AsyncioActors(InMemoryEventBus(), []) as group:
             assert group.started()
             await group.start()
 
     async def test_actors_cannot_be_extended_after_start(self):
-        async with Actors(InMemoryEventBus(), []) as group:
+        async with AsyncioActors(InMemoryEventBus(), []) as group:
             with pytest.raises(
                 RuntimeError, match="Cannot extend actors group after it is started"
             ):
                 await group.extend([])
 
     async def test_actors_group_stop_idempotent(self):
-        group = Actors(InMemoryEventBus(), [])
+        group = AsyncioActors(InMemoryEventBus(), [])
         assert not group.started()
         assert not group.done()
         await group.stop()
@@ -74,11 +72,11 @@ class TestActorsGroup:
 
     async def test_actors_group_cancel(self):
         bus = InMemoryEventBus()
-        event = Event("test-event", int)
+        event = StaticEvent("test-event", int)
         # Create a mock actor
         actor = MockActor(event)
         # Start an actor group
-        async with Actors(
+        async with AsyncioActors(
             bus=bus,
             actors=[actor],
         ) as group:
@@ -98,7 +96,7 @@ class TestActorsGroup:
 
     async def test_actors_group_start_stop_failure(self):
         bus = InMemoryEventBus()
-        event = Event("test-event", int)
+        event = StaticEvent("test-event", int)
         # Create a mock actor
         actor = MockActor(event, exception=Exception("BOOM"))
         # Start an actor group
@@ -106,7 +104,7 @@ class TestActorsGroup:
             ExceptionGroup,
             match=escape("1 error raised. Error: [Exception('BOOM')]"),
         ):
-            async with Actors(
+            async with AsyncioActors(
                 bus=bus,
                 actors=[actor],
             ) as group:
@@ -124,14 +122,14 @@ class TestActorsGroup:
     async def test_actors_group_start_stop_several_actors_one_failure(self):
         bus = InMemoryEventBus()
         # Create a mock actor
-        actor = MockActor(Event("test-event", int), exception=Exception("BOOM"))
-        actor_2 = MockActor(Event("test-event-2", int))
+        actor = MockActor(StaticEvent("test-event", int), exception=Exception("BOOM"))
+        actor_2 = MockActor(StaticEvent("test-event-2", int))
         # Start an actor group
         with pytest.raises(
             ExceptionGroup,
             match=escape("1 error raised. Error: [Exception('BOOM')]"),
         ):
-            async with Actors(
+            async with AsyncioActors(
                 bus=bus,
                 actors=[actor, actor_2],
             ) as group:
@@ -140,8 +138,8 @@ class TestActorsGroup:
                 assert group.started()
                 # Publish several events
                 for i in range(10):
-                    await bus.publish(Event("test-event", int), i)
-                    await bus.publish(Event("test-event-2", int), i)
+                    await bus.publish(StaticEvent("test-event", int), i)
+                    await bus.publish(StaticEvent("test-event-2", int), i)
 
         # Actors group is stopped on first event because an error was raised
         assert len(actor.received_events) == 1
@@ -152,10 +150,10 @@ class TestActorsGroup:
     async def test_actors_group_start_stop_several_actors_success(self):
         bus = InMemoryEventBus()
         # Create a mock actor
-        actor = MockActor(Event("test-event", int))
-        actor_2 = MockActor(Event("test-event-2", int))
+        actor = MockActor(StaticEvent("test-event", int))
+        actor_2 = MockActor(StaticEvent("test-event-2", int))
         # Start an actor group
-        async with Actors(
+        async with AsyncioActors(
             bus=bus,
             actors=[actor, actor_2],
         ) as group:
@@ -165,9 +163,9 @@ class TestActorsGroup:
             assert group.started()
             assert not group.done()
             # Publish some events
-            await bus.publish(Event("test-event", int), 1)
+            await bus.publish(StaticEvent("test-event", int), 1)
             for idx in range(5):
-                await bus.publish(Event("test-event-2", int), idx)
+                await bus.publish(StaticEvent("test-event-2", int), idx)
             # Sleep a bit
             await asyncio.sleep(0.1)
         # Actors group is stopped because all events are processed

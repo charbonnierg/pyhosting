@@ -1,3 +1,3 @@
-from .actors import Actors, ActorsInstrumentation
+from .actors import ActorsInstrumentation, AsyncioActors
 
-__all__ = ["Actors", "ActorsInstrumentation"]
+__all__ = ["AsyncioActors", "ActorsInstrumentation"]

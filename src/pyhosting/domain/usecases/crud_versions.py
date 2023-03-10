@@ -2,7 +2,7 @@ import typing as t
 from dataclasses import dataclass
 from hashlib import md5
 
-from pyhosting.core.interfaces import EventBus
+from pyhosting.core import EventBus
 
 from ..entities import PageVersion
 from ..errors import (

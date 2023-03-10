@@ -1,9 +1,9 @@
 import typing as t
 
-from ..entities import Command, Event
+from ..entities import Command
 
 if t.TYPE_CHECKING:
-    from ..interfaces import Request
+    from ..interfaces import Request  # pragma: no cover
 
 
 T = t.TypeVar("T")
@@ -18,11 +18,6 @@ class Service(t.Generic[T, ReplyT]):
 
     handler: t.Callable[["Request[T, ReplyT]"], t.Coroutine[None, None, ReplyT]]
     """The coroutine function used to process commands."""
-
-    @property
-    def event(self) -> Event[T]:
-        """Access event from command."""
-        return Event(self.command.subject, self.command.schema)
 
     def __init__(
         self,
