@@ -6,7 +6,7 @@ from pathlib import Path
 import httpx
 import typer
 
-from pyhosting.clients.pages.http import HTTPPagesClient
+from pyhosting.adapters.clients.http.pages import HTTPPagesClient
 
 page = typer.Typer(name="page", no_args_is_help=True)
 

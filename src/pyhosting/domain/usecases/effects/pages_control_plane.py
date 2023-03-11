@@ -4,14 +4,14 @@ This module defines the actors responsible for interacting with the blob storage
 """
 from synopsys import EventBus, Message
 
-from ..events.page_versions import (
+from ...events.page import PageDeleted
+from ...events.version import (
     PAGE_VERSION_UPLOADED,
     PageVersionCreated,
     PageVersionDeleted,
     PageVersionUploaded,
 )
-from ..events.pages import PageDeleted
-from ..gateways import BlobStorageGateway
+from ...gateways import BlobStorageGateway
 
 
 class UploadToBlobStorageOnVersionCreated:

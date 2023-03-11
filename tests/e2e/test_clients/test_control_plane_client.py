@@ -1,7 +1,7 @@
 import pytest
 from starlette import status
 
-from pyhosting.adapters.clients.pages.testing import InMemoryHTTPPagesClient
+from pyhosting.adapters.clients.http.testing import InMemoryHTTPPagesClient
 from pyhosting.domain.entities import Page, PageVersion
 from tests.utils import parametrize_clock, parametrize_id_generator
 

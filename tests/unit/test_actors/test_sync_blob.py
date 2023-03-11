@@ -2,17 +2,17 @@ from hashlib import md5
 
 import pytest
 
-from pyhosting.domain.actors import sync_blob
 from pyhosting.domain.entities import PageVersion
-from pyhosting.domain.events.page_versions import (
+from pyhosting.domain.events.page import PAGE_DELETED, PageDeleted
+from pyhosting.domain.events.version import (
     PAGE_VERSION_CREATED,
     PAGE_VERSION_DELETED,
     PAGE_VERSION_UPLOADED,
     PageVersionCreated,
     PageVersionDeleted,
 )
-from pyhosting.domain.events.pages import PAGE_DELETED, PageDeleted
 from pyhosting.domain.gateways import BlobStorageGateway
+from pyhosting.domain.usecases.effects import pages_control_plane
 from synopsys import EventBus
 from synopsys.adapters.memory import InMemoryMessage as Msg
 from synopsys.concurrency import Waiter
@@ -25,7 +25,7 @@ class TestSyncBlobActors:
     ):
         content = b"<html></html>"
         checksum = md5(content).hexdigest()
-        actor = sync_blob.UploadToBlobStorageOnVersionCreated(
+        actor = pages_control_plane.UploadToBlobStorageOnVersionCreated(
             event_bus=event_bus,
             storage=blob_storage,
         )
@@ -55,7 +55,9 @@ class TestSyncBlobActors:
             page_id="testid", page_version="1", content=b"<html></html>"
         )
         assert await blob_storage.get_version("testid", page_version="1")
-        actor = sync_blob.CleanBlobStorageOnVersionDelete(storage=blob_storage)
+        actor = pages_control_plane.CleanBlobStorageOnVersionDelete(
+            storage=blob_storage
+        )
         await actor(
             Msg(
                 PAGE_VERSION_DELETED,
@@ -76,7 +78,7 @@ class TestSyncBlobActors:
         for idx in range(3):
             assert await blob_storage.get_version("testid", page_version=str(idx))
         assert len(await blob_storage.list_versions("testid")) == 3
-        actor = sync_blob.CleanBlobStorageOnPageDelete(storage=blob_storage)
+        actor = pages_control_plane.CleanBlobStorageOnPageDelete(storage=blob_storage)
         await actor(
             Msg(
                 PAGE_DELETED,

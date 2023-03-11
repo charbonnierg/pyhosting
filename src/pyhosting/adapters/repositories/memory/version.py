@@ -1,8 +1,8 @@
 import typing as t
 from collections import defaultdict
 
-from ....domain.entities import PageVersion
-from ....domain.repositories import PageVersionRepository
+from pyhosting.domain.entities import PageVersion
+from pyhosting.domain.repositories import PageVersionRepository
 
 
 class InMemoryPageVersionRepository(PageVersionRepository):

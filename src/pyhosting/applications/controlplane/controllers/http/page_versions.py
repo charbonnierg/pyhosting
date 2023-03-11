@@ -8,7 +8,7 @@ from starlette.responses import JSONResponse
 
 from pyhosting.domain.errors import EmptyContentError, ResourceNotFoundError
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
-from pyhosting.domain.usecases import crud_pages, crud_versions
+from pyhosting.domain.usecases import commands, queries
 from synopsys import EventBus
 
 from .models.page_versions import (
@@ -32,29 +32,28 @@ class PageVersionsRouter(APIRouter):
         self.event_bus = event_bus
         self.clock = clock
         # Prepare usecases
-        self.get_page_usecase = crud_pages.GetPage(self.pages_repository)
-        self.update_latest_version_usecase = crud_pages.UpdateLatestPageVersion(
+        self.get_page_usecase = queries.pages.GetPage(self.pages_repository)
+        self.update_latest_version_usecase = commands.pages.UpdateLatestPageVersion(
             self.pages_repository
         )
-        self.create_usecase = crud_versions.CreatePageVersion(
-            self.versions_repository,
+        self.create_usecase = commands.pages.CreatePageVersion(
+            page_repository=self.pages_repository,
+            version_repository=self.versions_repository,
             event_bus=self.event_bus,
             clock=self.clock,
-            get_page=self.get_page_usecase,
-            update_latest_version=self.update_latest_version_usecase,
         )
-        self.get_usecase = crud_versions.GetPageVersion(
-            repository=self.versions_repository,
+        self.get_usecase = queries.pages.GetPageVersion(
+            version_repository=self.versions_repository,
             get_page=self.get_page_usecase,
         )
-        self.delete_usecase = crud_versions.DeletePageVersion(
-            repository=self.versions_repository,
+        self.delete_usecase = commands.pages.DeletePageVersion(
+            page_repository=self.pages_repository,
+            version_repository=self.versions_repository,
             event_bus=self.event_bus,
-            get_page=self.get_page_usecase,
             update_latest_version=self.update_latest_version_usecase,
         )
-        self.list_usecase = crud_versions.ListPagesVersions(
-            repository=versions_repository,
+        self.list_usecase = queries.pages.ListPagesVersions(
+            version_repository=versions_repository,
             get_page=self.get_page_usecase,
         )
         self.setup()
@@ -97,9 +96,7 @@ class PageVersionsRouter(APIRouter):
     ) -> GetPageVersionResult:
         """Get info about page version."""
         try:
-            version = await self.get_usecase.do(
-                page_id=page_id, page_version=page_version
-            )
+            version = await self.get_usecase(page_id=page_id, page_version=page_version)
         except ResourceNotFoundError as exc:
             raise HTTPException(status_code=exc.code, detail={"error": exc.msg})
         result = GetPageVersionResult(document=version)
@@ -113,14 +110,14 @@ class PageVersionsRouter(APIRouter):
     ) -> None:
         """Delete a page version"""
         try:
-            await self.delete_usecase.do(page_id=page_id, page_version=page_version)
+            await self.delete_usecase(page_id=page_id, page_version=page_version)
         except ResourceNotFoundError as exc:
             raise HTTPException(status_code=exc.code, detail={"error": exc.msg})
 
     async def list_page_versions(self, page_id: str) -> ListPageVersionsResult:
         """List versions for a page"""
         try:
-            versions = await self.list_usecase.do(page_id=page_id)
+            versions = await self.list_usecase(page_id=page_id)
         except ResourceNotFoundError as exc:
             raise HTTPException(status_code=exc.code, detail={"error": exc.msg})
         result = ListPageVersionsResult(documents=versions)
@@ -145,7 +142,7 @@ class PageVersionsRouter(APIRouter):
         content = await request.body()
         # Execute usecase
         try:
-            created_version = await self.create_usecase.do(
+            created_version = await self.create_usecase(
                 page_id=page_id,
                 page_version=version,
                 content=content,

@@ -2,21 +2,21 @@ from pathlib import Path
 
 import pytest
 
-from pyhosting.domain.actors import sync_local
 from pyhosting.domain.entities import Page
-from pyhosting.domain.events.page_versions import (
-    PAGE_VERSION_DELETED,
-    PAGE_VERSION_UPLOADED,
-    PageVersionDeleted,
-    PageVersionUploaded,
-)
-from pyhosting.domain.events.pages import (
+from pyhosting.domain.events.page import (
     PAGE_CREATED,
     PAGE_DELETED,
     PageCreated,
     PageDeleted,
 )
+from pyhosting.domain.events.version import (
+    PAGE_VERSION_DELETED,
+    PAGE_VERSION_UPLOADED,
+    PageVersionDeleted,
+    PageVersionUploaded,
+)
 from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
+from pyhosting.domain.usecases.effects import pages_data_plane
 from synopsys.adapters.memory import InMemoryMessage as Msg
 
 
@@ -25,7 +25,7 @@ class TestSyncLocalActors:
     async def test_generate_default_index_on_page_created(
         self, local_storage: LocalStorageGateway
     ):
-        actor = sync_local.GenerateDefaultIndexOnPageCreated(
+        actor = pages_data_plane.GenerateDefaultIndexOnPageCreated(
             local_storage=local_storage, base_url="http://testapp"
         )
         default_path = local_storage.get_latest_path_or_default("test")
@@ -60,7 +60,7 @@ class TestSyncLocalActors:
         assert local_storage.root.joinpath(
             local_storage.get_version_path("test", "2")
         ).is_dir()
-        actor = sync_local.CleanLocalStorageOnPageDeleted(local_storage)
+        actor = pages_data_plane.CleanLocalStorageOnPageDeleted(local_storage)
         await actor(
             Msg(
                 PAGE_DELETED,
@@ -84,7 +84,7 @@ class TestSyncLocalActors:
         assert local_storage.root.joinpath(
             local_storage.get_version_path("test", "1")
         ).is_dir()
-        actor = sync_local.CleanLocalStorageOnVersionDeleted(
+        actor = pages_data_plane.CleanLocalStorageOnVersionDeleted(
             local_storage=local_storage
         )
         await actor(
@@ -110,7 +110,7 @@ class TestSyncLocalActors:
             local_storage.get_version_path("test", "1")
         ).is_dir()
         await blob_storage.put_version("testid", "1", b"<html></html>")
-        actor = sync_local.DownloadToLocalStorageOnVersionUploaded(
+        actor = pages_data_plane.DownloadToLocalStorageOnVersionUploaded(
             local_storage=local_storage,
             blob_storage=blob_storage,
         )

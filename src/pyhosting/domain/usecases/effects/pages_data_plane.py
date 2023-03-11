@@ -1,9 +1,9 @@
 from synopsys import Message
 
-from ..events.page_versions import PageVersionDeleted, PageVersionUploaded
-from ..events.pages import PageCreated, PageDeleted
-from ..gateways import BlobStorageGateway, LocalStorageGateway
-from ..templates import render_default_template
+from ...events.page import PageCreated, PageDeleted
+from ...events.version import PageVersionDeleted, PageVersionUploaded
+from ...gateways import BlobStorageGateway, LocalStorageGateway
+from ...templates import render_default_template
 
 
 class DownloadToLocalStorageOnVersionUploaded:

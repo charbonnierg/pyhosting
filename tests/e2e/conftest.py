@@ -3,8 +3,8 @@ import typing as t
 import pytest
 from genid import IDGenerator
 
+from pyhosting.adapters.clients.http.testing import InMemoryHTTPPagesClient
 from pyhosting.applications.controlplane.factory import create_app
-from pyhosting.adapters.clients.pages.testing import InMemoryHTTPPagesClient
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
 from synopsys import EventBus
 

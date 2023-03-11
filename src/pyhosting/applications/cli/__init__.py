@@ -6,7 +6,7 @@ from .cp import cp
 from .dp import dp
 from .pages import page
 
-cli = typer.Typer(name="pyhosting", no_args_is_help=True)
+cli = typer.Typer(name="ph", no_args_is_help=True)
 """pyhosting CLI entrypoint."""
 
 

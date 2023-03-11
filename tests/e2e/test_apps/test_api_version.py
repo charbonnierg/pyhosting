@@ -1,7 +1,7 @@
 from starlette import status
 
 from pyhosting import __version__
-from pyhosting.adapters.clients.pages.testing import InMemoryHTTPPagesClient
+from pyhosting.adapters.clients.http.testing import InMemoryHTTPPagesClient
 
 
 def test_version_route(client: InMemoryHTTPPagesClient) -> None:

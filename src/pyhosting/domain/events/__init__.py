@@ -1,9 +1,5 @@
-from .page_versions import (
-    PAGE_VERSION_CREATED,
-    PAGE_VERSION_DELETED,
-    PAGE_VERSION_UPLOADED,
-)
-from .pages import PAGE_CREATED, PAGE_DELETED
+from .page import PAGE_CREATED, PAGE_DELETED
+from .version import PAGE_VERSION_CREATED, PAGE_VERSION_DELETED, PAGE_VERSION_UPLOADED
 
 __all__ = [
     "PAGE_DELETED",

@@ -14,9 +14,9 @@ from pyhosting.adapters.repositories.memory import (
 )
 from pyhosting.applications.dataplane.factory import create_app as create_agent_app
 from pyhosting.domain import events
-from pyhosting.domain.actors import sync_blob, sync_local
 from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
+from pyhosting.domain.usecases.effects import pages_control_plane, pages_data_plane
 from synopsys import EventBus, Play, Subscriber
 from synopsys.adapters.memory import InMemoryEventBus
 
@@ -89,17 +89,21 @@ def create_app(
         actors=[
             Subscriber(
                 event=events.PAGE_DELETED,
-                handler=sync_blob.CleanBlobStorageOnPageDelete(storage=blob_storage),
+                handler=pages_control_plane.CleanBlobStorageOnPageDelete(
+                    storage=blob_storage
+                ),
             ),
             Subscriber(
                 event=events.PAGE_VERSION_CREATED,
-                handler=sync_blob.UploadToBlobStorageOnVersionCreated(
+                handler=pages_control_plane.UploadToBlobStorageOnVersionCreated(
                     event_bus=event_bus, storage=blob_storage
                 ),
             ),
             Subscriber(
                 event=events.PAGE_VERSION_DELETED,
-                handler=sync_blob.CleanBlobStorageOnVersionDelete(storage=blob_storage),
+                handler=pages_control_plane.CleanBlobStorageOnVersionDelete(
+                    storage=blob_storage
+                ),
             ),
         ],
     )
@@ -107,25 +111,25 @@ def create_app(
     actors.extend(
         Subscriber(
             event=events.PAGE_CREATED,
-            handler=sync_local.GenerateDefaultIndexOnPageCreated(
+            handler=pages_data_plane.GenerateDefaultIndexOnPageCreated(
                 local_storage=local_storage, base_url=base_url
             ),
         ),
         Subscriber(
             event=events.PAGE_DELETED,
-            handler=sync_local.CleanLocalStorageOnPageDeleted(
+            handler=pages_data_plane.CleanLocalStorageOnPageDeleted(
                 local_storage=local_storage
             ),
         ),
         Subscriber(
             event=events.PAGE_VERSION_DELETED,
-            handler=sync_local.CleanLocalStorageOnVersionDeleted(
+            handler=pages_data_plane.CleanLocalStorageOnVersionDeleted(
                 local_storage=local_storage
             ),
         ),
         Subscriber(
             event=events.PAGE_VERSION_UPLOADED,
-            handler=sync_local.DownloadToLocalStorageOnVersionUploaded(
+            handler=pages_data_plane.DownloadToLocalStorageOnVersionUploaded(
                 local_storage=local_storage, blob_storage=blob_storage
             ),
         ),

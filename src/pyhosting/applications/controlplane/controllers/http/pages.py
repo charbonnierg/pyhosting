@@ -7,12 +7,7 @@ from starlette import status
 
 from pyhosting.domain.errors import PageAlreadyExistsError, PageNotFoundError
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
-from pyhosting.domain.usecases.crud_pages import (
-    CreatePage,
-    DeletePage,
-    GetPage,
-    ListPages,
-)
+from pyhosting.domain.usecases import commands, queries
 from synopsys import EventBus
 
 from .models.pages import (
@@ -40,20 +35,20 @@ class PagesAPIRouter(APIRouter):
         self.event_bus = event_bus
         self.clock = clock
         # Prepare usecase
-        self.get_page_usecase = GetPage(
-            repository=self.pages_repository,
+        self.get_page_usecase = queries.pages.GetPage(
+            page_repository=self.pages_repository,
         )
-        self.create_page_usecase = CreatePage(
+        self.create_page_usecase = commands.pages.CreatePage(
             id_generator=self.id_generator,
-            repository=self.pages_repository,
+            page_repository=self.pages_repository,
             event_bus=self.event_bus,
         )
-        self.delete_page_usecase = DeletePage(
-            repository=self.pages_repository,
+        self.delete_page_usecase = commands.pages.DeletePage(
+            page_repository=self.pages_repository,
             event_bus=self.event_bus,
         )
-        self.list_pages_usecase = ListPages(
-            repository=self.pages_repository,
+        self.list_pages_usecase = queries.pages.ListPages(
+            page_repository=self.pages_repository,
         )
         # Setup routes
         self.setup()
@@ -103,7 +98,7 @@ class PagesAPIRouter(APIRouter):
         """Get page infos."""
         # Execute usecase
         try:
-            page = await self.get_page_usecase.do(page_id=page_id)
+            page = await self.get_page_usecase(page_id=page_id)
         except PageNotFoundError as exc:
             # Return an HTTP response with a failure code
             raise HTTPException(detail={"error": exc.msg}, status_code=exc.code)
@@ -115,7 +110,7 @@ class PagesAPIRouter(APIRouter):
     async def list_pages(self) -> ListPagesResult:
         """List existing pages."""
         # Execute usecase
-        pages = await self.list_pages_usecase.do()
+        pages = await self.list_pages_usecase()
         # Return a JSON response
         result = ListPagesResult(documents=pages)
         # I don't understand how FastAPI works
@@ -125,7 +120,7 @@ class PagesAPIRouter(APIRouter):
         """Return an HTTP response with either a page creation success or page creation a failure"""
         # Execute usecase with command
         try:
-            page = await self.create_page_usecase.do(
+            page = await self.create_page_usecase(
                 name=options.name,
                 title=options.title,
                 description=options.description,
@@ -144,7 +139,7 @@ class PagesAPIRouter(APIRouter):
         """Return an HTTP response without content upon page deletion"""
         # Execute usecase with command
         try:
-            await self.delete_page_usecase.do(page_id=page_id)
+            await self.delete_page_usecase(page_id=page_id)
         except PageNotFoundError as exc:
             # Return an HTTP error when page does not exist
             raise HTTPException(

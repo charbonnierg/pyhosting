@@ -1,8 +1,8 @@
 import typing as t
 
-from ....domain.entities import Page, PageVersion
-from ....domain.errors import PageNotFoundError
-from ....domain.repositories import PageRepository
+from pyhosting.domain.entities import Page, PageVersion
+from pyhosting.domain.errors import PageNotFoundError
+from pyhosting.domain.repositories import PageRepository
 
 
 class InMemoryPageRepository(PageRepository):

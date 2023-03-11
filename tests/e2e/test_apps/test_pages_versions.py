@@ -1,6 +1,6 @@
 import pytest
 
-from pyhosting.adapters.clients.pages.testing import InMemoryHTTPPagesClient
+from pyhosting.adapters.clients.http.testing import InMemoryHTTPPagesClient
 from pyhosting.domain.events import PAGE_VERSION_CREATED, PAGE_VERSION_UPLOADED
 from synopsys import EventBus
 from synopsys.concurrency import Waiter

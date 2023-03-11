@@ -11,9 +11,9 @@ from pyhosting.domain.errors import (
     VersionNotFoundError,
 )
 from pyhosting.domain.events import PAGE_VERSION_CREATED, PAGE_VERSION_DELETED
-from pyhosting.domain.events.page_versions import PageVersionCreated, PageVersionDeleted
+from pyhosting.domain.events.version import PageVersionCreated, PageVersionDeleted
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
-from pyhosting.domain.usecases import crud_pages, crud_versions
+from pyhosting.domain.usecases import commands, queries
 from synopsys import EventBus
 from synopsys.concurrency import Waiter
 from tests.utils import (
@@ -30,14 +30,14 @@ class TestPageCrudUseCases:
     async def test_list_versions_page_not_found(
         self, page_repository: PageRepository, version_repository: PageVersionRepository
     ):
-        list_usecase = crud_versions.ListPagesVersions(
-            repository=version_repository,
-            get_page=crud_pages.GetPage(repository=page_repository),
+        list_usecase = queries.pages.ListPagesVersions(
+            version_repository=version_repository,
+            get_page=queries.pages.GetPage(page_repository=page_repository),
         )
         with pytest.raises(
             PageNotFoundError, match="Page not found: not-an-existing-id"
         ):
-            await list_usecase.do(page_id="not-an-existing-id")
+            await list_usecase(page_id="not-an-existing-id")
 
     @parametrize_id_generator("constant", value="fakeid")
     async def test_list_versions_empty(
@@ -47,15 +47,17 @@ class TestPageCrudUseCases:
         version_repository: PageVersionRepository,
         event_bus: EventBus,
     ):
-        create_usecase = crud_pages.CreatePage(
-            id_generator=id_generator, repository=page_repository, event_bus=event_bus
+        create_usecase = commands.pages.CreatePage(
+            id_generator=id_generator,
+            page_repository=page_repository,
+            event_bus=event_bus,
         )
-        await create_usecase.do(name="test")
-        list_uscase = crud_versions.ListPagesVersions(
-            repository=version_repository,
-            get_page=crud_pages.GetPage(repository=page_repository),
+        await create_usecase(name="test")
+        list_uscase = queries.pages.ListPagesVersions(
+            version_repository=version_repository,
+            get_page=queries.pages.GetPage(page_repository=page_repository),
         )
-        result = await list_uscase.do(page_id="fakeid")
+        result = await list_uscase(page_id="fakeid")
         assert result == []
 
     @parametrize_id_generator("constant", value="fakeid")
@@ -66,33 +68,34 @@ class TestPageCrudUseCases:
         version_repository: PageVersionRepository,
         event_bus: EventBus,
     ):
-        create_usecase = crud_pages.CreatePage(
-            id_generator=id_generator, repository=page_repository, event_bus=event_bus
-        )
-        await create_usecase.do(name="test")
-        publish_usecase = crud_versions.CreatePageVersion(
-            repository=version_repository,
+        create_usecase = commands.pages.CreatePage(
+            id_generator=id_generator,
+            page_repository=page_repository,
             event_bus=event_bus,
-            get_page=crud_pages.GetPage(page_repository),
-            update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
+        )
+        await create_usecase(name="test")
+        publish_usecase = commands.pages.CreatePageVersion(
+            page_repository=page_repository,
+            version_repository=version_repository,
+            event_bus=event_bus,
             clock=lambda: 0,
         )
-        get_usecase = crud_pages.GetPage(page_repository)
+        get_usecase = queries.GetPage(page_repository)
         for idx in range(10):
-            await publish_usecase.do(
+            await publish_usecase(
                 page_id="fakeid",
                 page_version=str(idx),
                 content=str(idx).encode(),
                 latest=True,
             )
-            page = await get_usecase.do(page_id="fakeid")
+            page = await get_usecase(page_id="fakeid")
             assert page.latest_version == str(idx)
 
-        list_usecase = crud_versions.ListPagesVersions(
-            repository=version_repository,
-            get_page=crud_pages.GetPage(repository=page_repository),
+        list_usecase = queries.pages.ListPagesVersions(
+            version_repository=version_repository,
+            get_page=queries.pages.GetPage(page_repository=page_repository),
         )
-        result = await list_usecase.do(page_id="fakeid")
+        result = await list_usecase(page_id="fakeid")
         assert len(result) == 10
 
     @parametrize_id_generator("constant", value="fakeid")
@@ -103,34 +106,33 @@ class TestPageCrudUseCases:
         version_repository: PageVersionRepository,
         event_bus: EventBus,
     ):
-        create_usecase = crud_pages.CreatePage(
-            id_generator=id_generator, repository=page_repository, event_bus=event_bus
-        )
-        await create_usecase.do(name="test")
-        get_page_usecase = crud_pages.GetPage(page_repository)
-        get_version_usecase = crud_versions.GetPageVersion(
-            repository=version_repository, get_page=get_page_usecase
-        )
-        publish_usecase = crud_versions.CreatePageVersion(
-            repository=version_repository,
+        create_usecase = commands.pages.CreatePage(
+            id_generator=id_generator,
+            page_repository=page_repository,
             event_bus=event_bus,
-            get_page=crud_pages.GetPage(page_repository),
-            update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
+        )
+        await create_usecase(name="test")
+        get_page_usecase = queries.pages.GetPage(page_repository)
+        get_version_usecase = queries.pages.GetPageVersion(
+            version_repository=version_repository, get_page=get_page_usecase
+        )
+        publish_usecase = commands.pages.CreatePageVersion(
+            page_repository=page_repository,
+            version_repository=version_repository,
+            event_bus=event_bus,
             clock=lambda: 0,
         )
         waiter = await Waiter.create(event_bus.subscribe(PAGE_VERSION_CREATED))
-        version = await publish_usecase.do(
+        version = await publish_usecase(
             page_id="fakeid", page_version="1", content=b"<html></html>", latest=False
         )
         event = await waiter.wait(0.1)
         assert event.data == PageVersionCreated(
             document=version, content=b"<html></html>", latest=False
         )
-        result = await get_page_usecase.do(page_id="fakeid")
+        result = await get_page_usecase(page_id="fakeid")
         assert result.latest_version is None
-        version_result = await get_version_usecase.do(
-            page_id="fakeid", page_version="1"
-        )
+        version_result = await get_version_usecase(page_id="fakeid", page_version="1")
         assert version_result == PageVersion(
             page_id="fakeid",
             page_name="test",
@@ -147,32 +149,33 @@ class TestPageCrudUseCases:
         version_repository: PageVersionRepository,
         event_bus: EventBus,
     ):
-        create_usecase = crud_pages.CreatePage(
-            id_generator=id_generator, repository=page_repository, event_bus=event_bus
-        )
-        await create_usecase.do(name="test")
-        get_page_usecase = crud_pages.GetPage(page_repository)
-        get_version_usecase = crud_versions.GetLatestPageVersion(
-            repository=version_repository, get_page=get_page_usecase
-        )
-        publish_usecase = crud_versions.CreatePageVersion(
-            repository=version_repository,
+        create_usecase = commands.pages.CreatePage(
+            id_generator=id_generator,
+            page_repository=page_repository,
             event_bus=event_bus,
-            get_page=crud_pages.GetPage(page_repository),
-            update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
+        )
+        await create_usecase(name="test")
+        get_page_usecase = queries.pages.GetPage(page_repository)
+        get_version_usecase = queries.pages.GetLatestPageVersion(
+            version_repository=version_repository, get_page=get_page_usecase
+        )
+        publish_usecase = commands.pages.CreatePageVersion(
+            page_repository=page_repository,
+            version_repository=version_repository,
+            event_bus=event_bus,
             clock=lambda: 0,
         )
         waiter = await Waiter.create(event_bus.subscribe(PAGE_VERSION_CREATED))
-        version = await publish_usecase.do(
+        version = await publish_usecase(
             page_id="fakeid", page_version="1", content=b"<html></html>", latest=True
         )
         event = await waiter.wait()
         assert event.data == PageVersionCreated(
             document=version, content=b"<html></html>", latest=True
         )
-        result = await get_page_usecase.do(page_id="fakeid")
+        result = await get_page_usecase(page_id="fakeid")
         assert result.latest_version == "1"
-        version_result = await get_version_usecase.do(page_id="fakeid")
+        version_result = await get_version_usecase(page_id="fakeid")
         assert version_result == PageVersion(
             page_id="fakeid",
             page_name="test",
@@ -186,14 +189,14 @@ class TestPageCrudUseCases:
         page_repository: PageRepository,
         version_repository: PageVersionRepository,
     ):
-        get_page_usecase = crud_pages.GetPage(page_repository)
-        get_version_usecase = crud_versions.GetPageVersion(
-            repository=version_repository, get_page=get_page_usecase
+        get_page_usecase = queries.pages.GetPage(page_repository)
+        get_version_usecase = queries.pages.GetPageVersion(
+            version_repository=version_repository, get_page=get_page_usecase
         )
         with pytest.raises(
             PageNotFoundError, match="Page not found: not-an-existing-id"
         ):
-            await get_version_usecase.do(page_id="not-an-existing-id", page_version="0")
+            await get_version_usecase(page_id="not-an-existing-id", page_version="0")
 
     @parametrize_id_generator("constant", value="fakeid")
     async def test_get_version_not_found(
@@ -203,16 +206,18 @@ class TestPageCrudUseCases:
         version_repository: PageVersionRepository,
         event_bus: EventBus,
     ):
-        create_usecase = crud_pages.CreatePage(
-            id_generator=id_generator, repository=page_repository, event_bus=event_bus
+        create_usecase = commands.pages.CreatePage(
+            id_generator=id_generator,
+            page_repository=page_repository,
+            event_bus=event_bus,
         )
-        await create_usecase.do(name="test")
-        get_page_usecase = crud_pages.GetPage(page_repository)
-        get_version_usecase = crud_versions.GetPageVersion(
-            repository=version_repository, get_page=get_page_usecase
+        await create_usecase(name="test")
+        get_page_usecase = queries.pages.GetPage(page_repository)
+        get_version_usecase = queries.pages.GetPageVersion(
+            version_repository=version_repository, get_page=get_page_usecase
         )
         with pytest.raises(VersionNotFoundError, match="Version not found: test/0"):
-            await get_version_usecase.do(page_id="fakeid", page_version="0")
+            await get_version_usecase(page_id="fakeid", page_version="0")
 
     @parametrize_id_generator("constant", value="fakeid")
     async def test_get_latest_version_not_found(
@@ -222,18 +227,20 @@ class TestPageCrudUseCases:
         version_repository: PageVersionRepository,
         event_bus: EventBus,
     ):
-        create_usecase = crud_pages.CreatePage(
-            id_generator=id_generator, repository=page_repository, event_bus=event_bus
+        create_usecase = commands.pages.CreatePage(
+            id_generator=id_generator,
+            page_repository=page_repository,
+            event_bus=event_bus,
         )
-        await create_usecase.do(name="test")
-        get_page_usecase = crud_pages.GetPage(page_repository)
-        get_version_usecase = crud_versions.GetLatestPageVersion(
-            repository=version_repository, get_page=get_page_usecase
+        await create_usecase(name="test")
+        get_page_usecase = queries.pages.GetPage(page_repository)
+        get_version_usecase = queries.pages.GetLatestPageVersion(
+            version_repository=version_repository, get_page=get_page_usecase
         )
         with pytest.raises(
             VersionNotFoundError, match="Version not found: test/latest"
         ):
-            await get_version_usecase.do(page_id="fakeid")
+            await get_version_usecase(page_id="fakeid")
 
     @parametrize_id_generator("constant", value="fakeid")
     async def test_create_version_already_exists(
@@ -243,24 +250,25 @@ class TestPageCrudUseCases:
         version_repository: PageVersionRepository,
         event_bus: EventBus,
     ):
-        create_usecase = crud_pages.CreatePage(
-            id_generator=id_generator, repository=page_repository, event_bus=event_bus
-        )
-        await create_usecase.do(name="test")
-        publish_usecase = crud_versions.CreatePageVersion(
-            repository=version_repository,
+        create_usecase = commands.pages.CreatePage(
+            id_generator=id_generator,
+            page_repository=page_repository,
             event_bus=event_bus,
-            get_page=crud_pages.GetPage(page_repository),
-            update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
+        )
+        await create_usecase(name="test")
+        publish_usecase = commands.pages.CreatePageVersion(
+            page_repository=page_repository,
+            version_repository=version_repository,
+            event_bus=event_bus,
             clock=lambda: 0,
         )
-        await publish_usecase.do(
+        await publish_usecase(
             page_id="fakeid", page_version="1", content=b"<html></html>", latest=True
         )
         with pytest.raises(
             VersionAlreadyExistsError, match="Version already exists: test/1"
         ):
-            await publish_usecase.do(
+            await publish_usecase(
                 page_id="fakeid",
                 page_version="1",
                 content=b"<html></html>",
@@ -273,17 +281,18 @@ class TestPageCrudUseCases:
         version_repository: PageVersionRepository,
         event_bus: EventBus,
     ):
-        get_page_usecase = crud_pages.GetPage(page_repository)
-        delete_version = crud_versions.DeletePageVersion(
-            repository=version_repository,
-            get_page=get_page_usecase,
+        delete_version = commands.pages.DeletePageVersion(
+            page_repository=page_repository,
+            version_repository=version_repository,
             event_bus=event_bus,
-            update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
+            update_latest_version=commands.pages.UpdateLatestPageVersion(
+                page_repository
+            ),
         )
         with pytest.raises(
             PageNotFoundError, match="Page not found: not-an-existing-id"
         ):
-            await delete_version.do(page_id="not-an-existing-id", page_version="0")
+            await delete_version(page_id="not-an-existing-id", page_version="0")
 
     @parametrize_id_generator("constant", value="fakeid")
     async def test_delete_version_not_found(
@@ -293,19 +302,22 @@ class TestPageCrudUseCases:
         version_repository: PageVersionRepository,
         event_bus: EventBus,
     ):
-        create_usecase = crud_pages.CreatePage(
-            id_generator=id_generator, repository=page_repository, event_bus=event_bus
-        )
-        await create_usecase.do(name="test")
-        get_page_usecase = crud_pages.GetPage(page_repository)
-        delete_version_usecase = crud_versions.DeletePageVersion(
-            repository=version_repository,
-            get_page=get_page_usecase,
+        create_usecase = commands.pages.CreatePage(
+            id_generator=id_generator,
+            page_repository=page_repository,
             event_bus=event_bus,
-            update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
+        )
+        await create_usecase(name="test")
+        delete_version_usecase = commands.pages.DeletePageVersion(
+            page_repository=page_repository,
+            version_repository=version_repository,
+            event_bus=event_bus,
+            update_latest_version=commands.pages.UpdateLatestPageVersion(
+                page_repository
+            ),
         )
         with pytest.raises(VersionNotFoundError, match="Version not found: test/0"):
-            await delete_version_usecase.do(page_id="fakeid", page_version="0")
+            await delete_version_usecase(page_id="fakeid", page_version="0")
 
     @parametrize_id_generator("constant", value="fakeid")
     async def test_delete_version_cannot_delete_latest(
@@ -315,32 +327,34 @@ class TestPageCrudUseCases:
         version_repository: PageVersionRepository,
         event_bus: EventBus,
     ):
-        create_usecase = crud_pages.CreatePage(
-            id_generator=id_generator, repository=page_repository, event_bus=event_bus
-        )
-        await create_usecase.do(name="test")
-        get_page_usecase = crud_pages.GetPage(page_repository)
-        delete_version_usecase = crud_versions.DeletePageVersion(
-            repository=version_repository,
-            get_page=get_page_usecase,
+        create_usecase = commands.pages.CreatePage(
+            id_generator=id_generator,
+            page_repository=page_repository,
             event_bus=event_bus,
-            update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
         )
-        publish_usecase = crud_versions.CreatePageVersion(
-            repository=version_repository,
+        await create_usecase(name="test")
+        delete_version_usecase = commands.pages.DeletePageVersion(
+            version_repository=version_repository,
+            page_repository=page_repository,
             event_bus=event_bus,
-            get_page=crud_pages.GetPage(page_repository),
-            update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
+            update_latest_version=commands.pages.UpdateLatestPageVersion(
+                page_repository
+            ),
+        )
+        publish_usecase = commands.pages.CreatePageVersion(
+            page_repository=page_repository,
+            version_repository=version_repository,
+            event_bus=event_bus,
             clock=lambda: 0,
         )
-        await publish_usecase.do(
+        await publish_usecase(
             page_id="fakeid", page_version="1", content=b"<html></html>", latest=True
         )
         with pytest.raises(
             CannotDeleteLatestVersionError,
             match="Cannot delete latest page version: test/1",
         ):
-            await delete_version_usecase.do(page_id="fakeid", page_version="1")
+            await delete_version_usecase(page_id="fakeid", page_version="1")
 
     @parametrize_id_generator("constant", value="fakeid")
     async def test_delete_version_success(
@@ -350,49 +364,52 @@ class TestPageCrudUseCases:
         version_repository: PageVersionRepository,
         event_bus: EventBus,
     ):
-        create_usecase = crud_pages.CreatePage(
-            id_generator=id_generator, repository=page_repository, event_bus=event_bus
-        )
-        await create_usecase.do(name="test")
-        get_page_usecase = crud_pages.GetPage(page_repository)
-        delete_version_usecase = crud_versions.DeletePageVersion(
-            repository=version_repository,
-            get_page=get_page_usecase,
+        create_usecase = commands.pages.CreatePage(
+            id_generator=id_generator,
+            page_repository=page_repository,
             event_bus=event_bus,
-            update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
         )
-        publish_usecase = crud_versions.CreatePageVersion(
-            repository=version_repository,
+        await create_usecase(name="test")
+        get_page_usecase = queries.pages.GetPage(page_repository)
+        delete_version_usecase = commands.pages.DeletePageVersion(
+            page_repository=page_repository,
+            version_repository=version_repository,
             event_bus=event_bus,
-            get_page=crud_pages.GetPage(page_repository),
-            update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
+            update_latest_version=commands.pages.UpdateLatestPageVersion(
+                page_repository
+            ),
+        )
+        publish_usecase = commands.pages.CreatePageVersion(
+            page_repository=page_repository,
+            version_repository=version_repository,
+            event_bus=event_bus,
             clock=lambda: 0,
         )
-        await publish_usecase.do(
+        await publish_usecase(
             page_id="fakeid", page_version="1", content=b"<html></html>", latest=True
         )
-        page = await get_page_usecase.do("fakeid")
+        page = await get_page_usecase("fakeid")
         assert page.latest_version == "1"
 
-        await publish_usecase.do(
+        await publish_usecase(
             page_id="fakeid", page_version="2", content=b"<html></html>", latest=True
         )
 
         waiter = await Waiter.create(event_bus.subscribe(PAGE_VERSION_DELETED))
-        await delete_version_usecase.do(page_id="fakeid", page_version="1")
+        await delete_version_usecase(page_id="fakeid", page_version="1")
         event = await waiter.wait(0.1)
         assert event.data == PageVersionDeleted(
             page_id="fakeid", page_name="test", version="1"
         )
-        get_latest_version_usecase = crud_versions.GetLatestPageVersion(
+        get_latest_version_usecase = queries.pages.GetLatestPageVersion(
             version_repository, get_page_usecase
         )
-        get_version_usecase = crud_versions.GetPageVersion(
+        get_version_usecase = queries.pages.GetPageVersion(
             version_repository, get_page_usecase
         )
 
-        latest_version = await get_latest_version_usecase.do(page_id="fakeid")
-        version_2 = await get_version_usecase.do(page_id="fakeid", page_version="2")
+        latest_version = await get_latest_version_usecase(page_id="fakeid")
+        version_2 = await get_version_usecase(page_id="fakeid", page_version="2")
 
         assert (
             version_2
@@ -407,4 +424,4 @@ class TestPageCrudUseCases:
         )
 
         with pytest.raises(VersionNotFoundError, match="Version not found: test/1"):
-            await get_version_usecase.do(page_id="fakeid", page_version="1")
+            await get_version_usecase(page_id="fakeid", page_version="1")

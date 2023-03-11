@@ -1,5 +1,4 @@
 import typing as t
-from logging import basicConfig
 
 from starlette.applications import Starlette
 from starlette.routing import Mount
@@ -7,8 +6,8 @@ from starlette.routing import Mount
 from pyhosting.adapters.gateways.memory import InMemoryBlobStorage
 from pyhosting.adapters.gateways.temporary import TemporaryDirectory
 from pyhosting.domain import events
-from pyhosting.domain.actors import sync_local
 from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
+from pyhosting.domain.usecases.effects import pages_data_plane
 from synopsys import EventBus, Play, Subscriber
 from synopsys.adapters.memory import InMemoryEventBus
 
@@ -30,7 +29,6 @@ def create_app(
 
     Assuming proper arguments are provided, application can be entirely deterministic.
     """
-    basicConfig(level="DEBUG", format="%(levelname)s:     %(message)s")
     event_bus = event_bus or InMemoryEventBus()
     blob_storage = storage or InMemoryBlobStorage()
     local_storage = local_storage or TemporaryDirectory()
@@ -39,25 +37,25 @@ def create_app(
         actors=[
             Subscriber(
                 event=events.PAGE_CREATED,
-                handler=sync_local.GenerateDefaultIndexOnPageCreated(
+                handler=pages_data_plane.GenerateDefaultIndexOnPageCreated(
                     local_storage=local_storage, base_url=base_url
                 ),
             ),
             Subscriber(
                 event=events.PAGE_DELETED,
-                handler=sync_local.CleanLocalStorageOnPageDeleted(
+                handler=pages_data_plane.CleanLocalStorageOnPageDeleted(
                     local_storage=local_storage
                 ),
             ),
             Subscriber(
                 event=events.PAGE_VERSION_DELETED,
-                handler=sync_local.CleanLocalStorageOnVersionDeleted(
+                handler=pages_data_plane.CleanLocalStorageOnVersionDeleted(
                     local_storage=local_storage
                 ),
             ),
             Subscriber(
                 event=events.PAGE_VERSION_UPLOADED,
-                handler=sync_local.DownloadToLocalStorageOnVersionUploaded(
+                handler=pages_data_plane.DownloadToLocalStorageOnVersionUploaded(
                     local_storage=local_storage, blob_storage=blob_storage
                 ),
             ),

@@ -1,4 +1,4 @@
-from pyhosting.adapters.clients.pages.http import HTTPPagesClient
+from pyhosting.adapters.clients.http import HTTPPagesClient
 
 
 def test_http_client_init():

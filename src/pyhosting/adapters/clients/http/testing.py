@@ -3,7 +3,7 @@ import typing as t
 from starlette.applications import Starlette
 from starlette.testclient import TestClient as _TestClient
 
-from .http import BaseHTTPPagesClient
+from .pages import BaseHTTPPagesClient
 
 
 class InMemoryHTTPPagesClient(BaseHTTPPagesClient):
