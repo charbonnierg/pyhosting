@@ -2,18 +2,18 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Router
 
-from pyhosting.core import AsyncioActors
+from synopsys import Play
 
 
 class HealthCheckRouter(Router):
     def __init__(
         self,
-        actors: AsyncioActors,
+        play: Play,
     ) -> None:
         super().__init__(redirect_slashes=True)
-        self.actors = actors
+        self.play = play
         self.add_route("/", self.get_health, methods=["GET"], name="health")
 
     def get_health(self, _: Request) -> JSONResponse:
-        ok = self.actors.started() and not self.actors.done()
+        ok = self.play.started() and not self.play.done()
         return JSONResponse({"status": "ok" if ok else "ko"})

@@ -1,10 +1,10 @@
 from starlette import status
 
 from pyhosting import __version__
-from pyhosting.clients.controlplane.testing import HTTPTestClient
+from pyhosting.adapters.clients.pages.testing import InMemoryHTTPPagesClient
 
 
-def test_version_route(client: HTTPTestClient) -> None:
+def test_version_route(client: InMemoryHTTPPagesClient) -> None:
     """Check response from GET /version."""
     response = client.http.get("/api/version")
     assert response.status_code == status.HTTP_200_OK

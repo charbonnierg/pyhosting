@@ -2,7 +2,7 @@ import typing as t
 from dataclasses import dataclass
 from hashlib import md5
 
-from pyhosting.core import EventBus
+from synopsys import EventBus
 
 from ..entities import PageVersion
 from ..errors import (
@@ -108,7 +108,11 @@ class CreatePageVersion:
         # Emit a page version created event holding version document but NOT version content
         await self.event_bus.publish(
             PAGE_VERSION_CREATED,
-            PageVersionCreated(document=version, content=content, latest=latest),
+            scope=None,
+            payload=PageVersionCreated(
+                document=version, content=content, latest=latest
+            ),
+            metadata=None,
         )
         return version
 
@@ -132,9 +136,11 @@ class DeletePageVersion:
             raise VersionNotFoundError(page.name, page_version)
         await self.event_bus.publish(
             PAGE_VERSION_DELETED,
-            PageVersionDeleted(
+            scope=None,
+            payload=PageVersionDeleted(
                 page_id=page_id,
                 version=page_version,
                 page_name=page.name,
             ),
+            metadata=None,
         )

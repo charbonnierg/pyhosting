@@ -3,13 +3,14 @@ import typing as t
 import pytest
 from genid import IDGenerator
 
-from pyhosting.core import EventBus
 from pyhosting.domain.entities import Page, PageVersion
 from pyhosting.domain.errors import PageAlreadyExistsError, PageNotFoundError
 from pyhosting.domain.events import PAGE_CREATED, PAGE_DELETED
 from pyhosting.domain.repositories import PageRepository
 from pyhosting.domain.usecases import crud_pages
-from tests.utils import Waiter, parametrize_id_generator, parametrize_page_repository
+from synopsys import EventBus
+from synopsys.concurrency import Waiter
+from tests.utils import parametrize_id_generator, parametrize_page_repository
 
 
 @pytest.mark.asyncio
@@ -61,7 +62,7 @@ class TestPageCrudUseCases:
         page_repository: PageRepository,
         event_bus: EventBus,
     ):
-        waiter = await Waiter.create(event_bus, PAGE_CREATED)
+        waiter = await Waiter.create(event_bus.subscribe(PAGE_CREATED))
         result = await crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
         ).do(name=name, title=title, description=description)
@@ -161,7 +162,7 @@ class TestPageCrudUseCases:
         create_usecase = crud_pages.CreatePage(
             id_generator=id_generator, repository=page_repository, event_bus=event_bus
         )
-        waiter = await Waiter.create(event_bus, PAGE_DELETED)
+        waiter = await Waiter.create(event_bus.subscribe(PAGE_DELETED))
         page = await create_usecase.do(name="test", title=None, description=None)
         delete_usecase = crud_pages.DeletePage(
             repository=page_repository, event_bus=event_bus

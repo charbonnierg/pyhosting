@@ -11,10 +11,10 @@ from pyhosting.adapters.repositories.memory import (
     InMemoryPageRepository,
     InMemoryPageVersionRepository,
 )
-from pyhosting.core import EventBus
-from pyhosting.core.adapters.memory import InMemoryEventBus
 from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
+from synopsys import EventBus
+from synopsys.adapters.memory import InMemoryEventBus
 
 
 @pytest.fixture

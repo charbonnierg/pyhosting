@@ -6,10 +6,11 @@ from starlette.routing import Mount
 
 from pyhosting.adapters.gateways.memory import InMemoryBlobStorage
 from pyhosting.adapters.gateways.temporary import TemporaryDirectory
-from pyhosting.core import AsyncioActors, EventBus
-from pyhosting.core.adapters.memory import InMemoryEventBus
+from pyhosting.domain import events
 from pyhosting.domain.actors import sync_local
 from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
+from synopsys import EventBus, Play, Subscriber
+from synopsys.adapters.memory import InMemoryEventBus
 
 from .controllers.http import (
     HealthCheckRouter,
@@ -33,16 +34,32 @@ def create_app(
     event_bus = event_bus or InMemoryEventBus()
     blob_storage = storage or InMemoryBlobStorage()
     local_storage = local_storage or TemporaryDirectory()
-    actors = AsyncioActors(
+    actors = Play(
         bus=event_bus,
         actors=[
-            sync_local.GenerateDefaultIndexOnPageCreated(
-                local_storage=local_storage, base_url=base_url
+            Subscriber(
+                event=events.PAGE_CREATED,
+                handler=sync_local.GenerateDefaultIndexOnPageCreated(
+                    local_storage=local_storage, base_url=base_url
+                ),
             ),
-            sync_local.CleanLocalStorageOnPageDeleted(local_storage=local_storage),
-            sync_local.CleanLocalStorageOnVersionDeleted(local_storage=local_storage),
-            sync_local.DownloadToLocalStorageOnVersionUploaded(
-                local_storage=local_storage, blob_storage=blob_storage
+            Subscriber(
+                event=events.PAGE_DELETED,
+                handler=sync_local.CleanLocalStorageOnPageDeleted(
+                    local_storage=local_storage
+                ),
+            ),
+            Subscriber(
+                event=events.PAGE_VERSION_DELETED,
+                handler=sync_local.CleanLocalStorageOnVersionDeleted(
+                    local_storage=local_storage
+                ),
+            ),
+            Subscriber(
+                event=events.PAGE_VERSION_UPLOADED,
+                handler=sync_local.DownloadToLocalStorageOnVersionUploaded(
+                    local_storage=local_storage, blob_storage=blob_storage
+                ),
             ),
         ],
     )

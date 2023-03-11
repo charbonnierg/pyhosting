@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from genid import IDGenerator
 
-from pyhosting.core import EventBus
+from synopsys import EventBus
 
 from ..entities import Page, PageVersion
 from ..errors import PageAlreadyExistsError, PageNotFoundError
@@ -13,7 +13,11 @@ from ..repositories import PageRepository
 
 @dataclass
 class GetPage:
-    """Use case for retrieving an existing page."""
+    """Use case for retrieving an existing page.
+
+    Dependencies:
+        repository: an implementation of `PageRepository`.
+    """
 
     repository: PageRepository
 
@@ -27,7 +31,11 @@ class GetPage:
 
 @dataclass
 class UpdateLatestPageVersion:
-    """Use case for updating the latest version of a page"""
+    """Use case for updating the latest version of a page.
+
+    Dependencies:
+        repository: an implementation of `PageRepository`.
+    """
 
     repository: PageRepository
 
@@ -38,7 +46,11 @@ class UpdateLatestPageVersion:
 
 @dataclass
 class ListPages:
-    """Use case for listing existing pages."""
+    """Use case for listing existing pages.
+
+    Dependencies:
+        repository: An implementation of `PageRepository`.
+    """
 
     repository: PageRepository
 
@@ -49,7 +61,13 @@ class ListPages:
 
 @dataclass
 class CreatePage:
-    """Use case for creating a new page."""
+    """Use case for creating a new page.
+
+    Dependencies:
+        `id_generator`: An implementation of `IDGenerator`.
+        `repository`: An implementation of `PageRepository`.
+        `event_bus`: An implementation of `EventBus`.
+    """
 
     id_generator: IDGenerator
     repository: PageRepository
@@ -62,8 +80,10 @@ class CreatePage:
         description: t.Optional[str] = None,
     ) -> Page:
         """Execute usecase: Create a new page."""
+        # Check that no page exist with same name
         if await self.repository.page_name_exists(name):
             raise PageAlreadyExistsError(name)
+        # Create the page in-memory
         page = Page(
             id=self.id_generator.new(),
             name=name,
@@ -71,14 +91,26 @@ class CreatePage:
             description=description or "",
             latest_version=None,
         )
+        # Store the page
         await self.repository.create_page(page)
-        await self.event_bus.publish(PAGE_CREATED, PageCreated(document=page))
+        # Publish an event
+        await self.event_bus.publish(
+            event=PAGE_CREATED,
+            scope=None,
+            payload=PageCreated(document=page),
+            metadata=None,
+        )
         return page
 
 
 @dataclass
 class DeletePage:
-    """Use case for deleting an existing page."""
+    """Use case for deleting an existing page.
+
+    Dependencies:
+        `repository`: An implementation of `PageRepository`.
+        `event_bus`: An implementation of `EventBus`.
+    """
 
     repository: PageRepository
     event_bus: EventBus
@@ -90,5 +122,8 @@ class DeletePage:
             raise PageNotFoundError(page_id)
         await self.repository.delete_page(page_id)
         await self.event_bus.publish(
-            PAGE_DELETED, PageDeleted(id=page.id, name=page.name)
+            PAGE_DELETED,
+            scope=None,
+            payload=PageDeleted(id=page.id, name=page.name),
+            metadata=None,
         )

@@ -1,7 +1,7 @@
 import pytest
 from starlette import status
 
-from pyhosting.clients.controlplane.testing import HTTPTestClient
+from pyhosting.adapters.clients.pages.testing import InMemoryHTTPPagesClient
 from pyhosting.domain.entities import Page, PageVersion
 from tests.utils import parametrize_clock, parametrize_id_generator
 
@@ -11,7 +11,7 @@ TEST_CONTENT_MD5 = "b256d97fbb697428b7a1286ea33539c0"
 
 @parametrize_id_generator("constant", value="fakeid")
 @parametrize_clock(lambda: 0)
-def test_create_page(client: HTTPTestClient):
+def test_create_page(client: InMemoryHTTPPagesClient):
     """Check response from POST /pages/{page_id}/versions/."""
     # Create a new page
     page = client.create_page(name="test", title="Test Page")
@@ -22,7 +22,7 @@ def test_create_page(client: HTTPTestClient):
 
 
 @parametrize_id_generator("constant", value="fakeid")
-def test_get_page(client: HTTPTestClient):
+def test_get_page(client: InMemoryHTTPPagesClient):
     """Check response from GET /pages/<id>"""
     created_page = client.create_page(name="test", title="Test Page")
     read_page = client.get_page("fakeid")
@@ -43,7 +43,7 @@ def test_get_page(client: HTTPTestClient):
 
 
 @parametrize_id_generator("constant", value="fakeid")
-def test_get_page_by_name(client: HTTPTestClient) -> None:
+def test_get_page_by_name(client: InMemoryHTTPPagesClient) -> None:
     with pytest.raises(Exception):
         client.get_page_by_name("test")
     client.create_page(name="test")
@@ -53,20 +53,20 @@ def test_get_page_by_name(client: HTTPTestClient) -> None:
         client.get_page_by_name("test")
 
 
-def test_get_page_by_name_not_found(client: HTTPTestClient) -> None:
+def test_get_page_by_name_not_found(client: InMemoryHTTPPagesClient) -> None:
     client.create_page(name="test")
     with pytest.raises(Exception):
         client.get_page_by_name("not-an-existing-id")
 
 
-def test_list_pages_empty(client: HTTPTestClient):
+def test_list_pages_empty(client: InMemoryHTTPPagesClient):
     """Check response from GET /pages."""
     pages = client.list_pages()
     assert pages == []
 
 
 @parametrize_id_generator("incremental")
-def test_list_pages_many(client: HTTPTestClient):
+def test_list_pages_many(client: InMemoryHTTPPagesClient):
     for idx in range(3):
         client.create_page(name=f"test-{idx}")
     pages = client.list_pages()
@@ -77,7 +77,7 @@ def test_list_pages_many(client: HTTPTestClient):
     ]
 
 
-def test_get_page_does_not_exist(client: HTTPTestClient):
+def test_get_page_does_not_exist(client: InMemoryHTTPPagesClient):
     """Check response from GET /pages/<id>"""
     response = client.http.get("/api/pages/fakeid")
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -85,7 +85,7 @@ def test_get_page_does_not_exist(client: HTTPTestClient):
 
 
 @parametrize_id_generator("constant", value="fakeid")
-def test_create_page_already_exists(client: HTTPTestClient):
+def test_create_page_already_exists(client: InMemoryHTTPPagesClient):
     """Check response from POST /pages."""
     client.create_page(name="test", title="Test Page")
     response = client.http.post("/api/pages/", json={"name": "test"})
@@ -93,13 +93,13 @@ def test_create_page_already_exists(client: HTTPTestClient):
     assert response.json() == {"detail": {"error": "Page already exists: test"}}
 
 
-def test_delete_page_not_found(client: HTTPTestClient) -> None:
+def test_delete_page_not_found(client: InMemoryHTTPPagesClient) -> None:
     response = client.http.delete("/api/pages/fakeid")
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert response.json() == {"detail": {"error": "Page not found: fakeid"}}
 
 
-def test_create_version_error_missing_header(client: HTTPTestClient):
+def test_create_version_error_missing_header(client: InMemoryHTTPPagesClient):
     # Attempt to create a page without "x-page-version" header
     version_create_response = client.http.post(
         "/api/pages/fakeid/versions/",
@@ -113,7 +113,7 @@ def test_create_version_error_missing_header(client: HTTPTestClient):
 
 
 @parametrize_id_generator("constant", value="fakeid")
-def test_create_version_error_missing_payload(client: HTTPTestClient):
+def test_create_version_error_missing_payload(client: InMemoryHTTPPagesClient):
     # Create a new page
     client.create_page(name="test")
     # Attempt to create a page without "x-page-version" header
@@ -127,7 +127,7 @@ def test_create_version_error_missing_payload(client: HTTPTestClient):
 
 @parametrize_id_generator("constant", value="fakeid")
 @parametrize_clock(lambda: 0)
-def test_create_version_latest(client: HTTPTestClient):
+def test_create_version_latest(client: InMemoryHTTPPagesClient):
     # Start by creating a page
     client.create_page(name="test", title="Test Page")
     # Create a new latest version
@@ -153,7 +153,7 @@ def test_create_version_latest(client: HTTPTestClient):
 
 @parametrize_id_generator("constant", value="fakeid")
 @parametrize_clock(lambda: 0)
-def test_create_version_non_latest(client: HTTPTestClient):
+def test_create_version_non_latest(client: InMemoryHTTPPagesClient):
     # Start by creating a page
     client.create_page(name="test", title="Test Page")
     # Create a new latest version
@@ -184,7 +184,7 @@ def test_create_version_non_latest(client: HTTPTestClient):
 
 
 @parametrize_id_generator("constant", value="fakeid")
-def test_delete_version_non_latest(client: HTTPTestClient):
+def test_delete_version_non_latest(client: InMemoryHTTPPagesClient):
     # Start by creating a page
     client.create_page(name="test", title="Test Page")
     # The create a new version with latest=False
@@ -196,25 +196,25 @@ def test_delete_version_non_latest(client: HTTPTestClient):
         client.get_page_version("fakeid", "1")
 
 
-def test_delete_version_page_not_found(client: HTTPTestClient):
+def test_delete_version_page_not_found(client: InMemoryHTTPPagesClient):
     with pytest.raises(Exception, match="404 Not Found"):
         client.delete_page_version("not-an-existin-id", "0")
 
 
 @parametrize_id_generator("constant", value="fakeid")
-def test_delete_version_not_found(client: HTTPTestClient):
+def test_delete_version_not_found(client: InMemoryHTTPPagesClient):
     client.create_page(name="test", title="Test Page")
     with pytest.raises(Exception, match="404 Not Found"):
         client.delete_page_version("fakeid", "0")
 
 
-def test_list_versions_page_not_found(client: HTTPTestClient):
+def test_list_versions_page_not_found(client: InMemoryHTTPPagesClient):
     with pytest.raises(Exception, match="404 Not Found"):
         client.list_page_versions("not-an-existin-id")
 
 
 @parametrize_id_generator("constant", value="fakeid")
-def test_list_versions_empty(client: HTTPTestClient):
+def test_list_versions_empty(client: InMemoryHTTPPagesClient):
     client.create_page(name="test", title="Test Page")
     versions = client.list_page_versions("fakeid")
     assert versions == []
@@ -222,7 +222,7 @@ def test_list_versions_empty(client: HTTPTestClient):
 
 @parametrize_id_generator("constant", value="fakeid")
 @parametrize_clock(lambda: 0)
-def test_list_versions_many_results(client: HTTPTestClient):
+def test_list_versions_many_results(client: InMemoryHTTPPagesClient):
     # Start by creating a page
     client.create_page(name="test", title="Test Page")
     # The create a new version with latest=False

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from pyhosting.core import StaticEvent
+from synopsys import create_event
 
 from ..entities import PageVersion
 
@@ -14,7 +14,11 @@ class PageVersionCreated:
     latest: bool
 
 
-PAGE_VERSION_CREATED = StaticEvent("page-version-created", PageVersionCreated)
+PAGE_VERSION_CREATED = create_event(
+    name="page-version-created",
+    address="pages.created",
+    schema=PageVersionCreated,
+)
 
 
 @dataclass
@@ -26,7 +30,11 @@ class PageVersionUploaded:
     version: str
 
 
-PAGE_VERSION_UPLOADED = StaticEvent("page-version-uploaded", PageVersionUploaded)
+PAGE_VERSION_UPLOADED = create_event(
+    name="page-version-uploaded",
+    address="pages.versions.uploaded",
+    schema=PageVersionUploaded,
+)
 
 
 @dataclass
@@ -38,4 +46,8 @@ class PageVersionDeleted:
     version: str
 
 
-PAGE_VERSION_DELETED = StaticEvent("page-version-deleted", PageVersionDeleted)
+PAGE_VERSION_DELETED = create_event(
+    name="page-version-deleted",
+    address="pages.versions.deleted",
+    schema=PageVersionDeleted,
+)

@@ -2,29 +2,26 @@
 
 This module defines the actors responsible for interacting with the blob storage.
 """
-from pyhosting.core import Actor, EventBus, Message
+from synopsys import EventBus, Message
 
 from ..events.page_versions import (
-    PAGE_VERSION_CREATED,
-    PAGE_VERSION_DELETED,
     PAGE_VERSION_UPLOADED,
     PageVersionCreated,
     PageVersionDeleted,
     PageVersionUploaded,
 )
-from ..events.pages import PAGE_DELETED, PageDeleted
+from ..events.pages import PageDeleted
 from ..gateways import BlobStorageGateway
 
 
-class UploadToBlobStorageOnVersionCreated(Actor[PageVersionCreated]):
+class UploadToBlobStorageOnVersionCreated:
     """Upload a new version to blob storage on `page-version-created` event."""
 
     def __init__(self, event_bus: EventBus, storage: BlobStorageGateway) -> None:
         self.storage = storage
         self.event_bus = event_bus
-        super().__init__(PAGE_VERSION_CREATED, self.on_page_version_created)
 
-    async def on_page_version_created(self, msg: Message[PageVersionCreated]) -> None:
+    async def __call__(self, msg: Message[None, PageVersionCreated, None]) -> None:
         """Process a `page-version-created` event."""
         await self.storage.put_version(
             page_id=msg.data.document.page_id,
@@ -33,36 +30,36 @@ class UploadToBlobStorageOnVersionCreated(Actor[PageVersionCreated]):
         )
         await self.event_bus.publish(
             PAGE_VERSION_UPLOADED,
-            PageVersionUploaded(
+            scope=None,
+            payload=PageVersionUploaded(
                 page_id=msg.data.document.page_id,
                 page_name=msg.data.document.page_name,
                 version=msg.data.document.version,
             ),
+            metadata=None,
         )
 
 
-class CleanBlobStorageOnVersionDelete(Actor[PageVersionDeleted]):
+class CleanBlobStorageOnVersionDelete:
     """Delete a version from blob storage on `page-version-deleted` event."""
 
     def __init__(self, storage: BlobStorageGateway) -> None:
         self.storage = storage
-        super().__init__(PAGE_VERSION_DELETED, self.on_page_version_deleted)
 
-    async def on_page_version_deleted(self, msg: Message[PageVersionDeleted]) -> None:
+    async def __call__(self, msg: Message[None, PageVersionDeleted, None]) -> None:
         """Process a `page-version-deleted` event."""
         await self.storage.delete_version(
             page_id=msg.data.page_id, page_version=msg.data.version
         )
 
 
-class CleanBlobStorageOnPageDelete(Actor[PageDeleted]):
+class CleanBlobStorageOnPageDelete:
     """Delete all versions from blob storage on `page-deleted` event."""
 
     def __init__(self, storage: BlobStorageGateway) -> None:
         self.storage = storage
-        super().__init__(PAGE_DELETED, self.on_page_deleted)
 
-    async def on_page_deleted(self, msg: Message[PageDeleted]) -> None:
+    async def __call__(self, msg: Message[None, PageDeleted, None]) -> None:
         """Process a `page-deleted` event."""
         versions = await self.storage.list_versions(page_id=msg.data.id)
         for ref in versions:

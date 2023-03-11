@@ -1,17 +1,12 @@
-from pyhosting.core import Actor, Message
+from synopsys import Message
 
-from ..events.page_versions import (
-    PAGE_VERSION_DELETED,
-    PAGE_VERSION_UPLOADED,
-    PageVersionDeleted,
-    PageVersionUploaded,
-)
-from ..events.pages import PAGE_CREATED, PAGE_DELETED, PageCreated, PageDeleted
+from ..events.page_versions import PageVersionDeleted, PageVersionUploaded
+from ..events.pages import PageCreated, PageDeleted
 from ..gateways import BlobStorageGateway, LocalStorageGateway
 from ..templates import render_default_template
 
 
-class DownloadToLocalStorageOnVersionUploaded(Actor[PageVersionUploaded]):
+class DownloadToLocalStorageOnVersionUploaded:
     """Download page version from blob storage into local storage on `page-version-uploaded` event."""
 
     def __init__(
@@ -19,9 +14,8 @@ class DownloadToLocalStorageOnVersionUploaded(Actor[PageVersionUploaded]):
     ) -> None:
         self.local_storage = local_storage
         self.blob_storage = blob_storage
-        super().__init__(PAGE_VERSION_UPLOADED, self.on_page_version_uploaded)
 
-    async def on_page_version_uploaded(self, msg: Message[PageVersionUploaded]) -> None:
+    async def __call__(self, msg: Message[None, PageVersionUploaded, None]) -> None:
         """Process a `page-version-uploaded` event."""
         content = await self.blob_storage.get_version(
             page_id=msg.data.page_id, page_version=msg.data.version
@@ -38,41 +32,38 @@ class DownloadToLocalStorageOnVersionUploaded(Actor[PageVersionUploaded]):
         )
 
 
-class CleanLocalStorageOnVersionDeleted(Actor[PageVersionDeleted]):
+class CleanLocalStorageOnVersionDeleted:
     """Remove page version from local storage on `page-version-deleted` event."""
 
     def __init__(self, local_storage: LocalStorageGateway) -> None:
         self.local_storage = local_storage
-        super().__init__(PAGE_VERSION_DELETED, self.on_page_version_deleted)
 
-    async def on_page_version_deleted(self, event: Message[PageVersionDeleted]) -> None:
+    async def __call__(self, event: Message[None, PageVersionDeleted, None]) -> None:
         """Process a `page-version-deleted` event."""
         await self.local_storage.remove_directory(
             page_name=event.data.page_name, version=event.data.version
         )
 
 
-class CleanLocalStorageOnPageDeleted(Actor[PageDeleted]):
+class CleanLocalStorageOnPageDeleted:
     """Delete all pages version from local storage on `page-deleted` event."""
 
     def __init__(self, local_storage: LocalStorageGateway) -> None:
         self.local_storage = local_storage
-        super().__init__(PAGE_DELETED, self.on_page_deleted)
 
-    async def on_page_deleted(self, event: Message[PageDeleted]) -> None:
+    async def __call__(self, event: Message[None, PageDeleted, None]) -> None:
         """Process a `page-deleted` event."""
         await self.local_storage.remove_directory(page_name=event.data.name)
 
 
-class GenerateDefaultIndexOnPageCreated(Actor[PageCreated]):
+class GenerateDefaultIndexOnPageCreated:
     """Generate default index.html for latest page on `page-created` event."""
 
     def __init__(self, local_storage: LocalStorageGateway, base_url: str) -> None:
         self.local_storage = local_storage
         self.base_url = base_url
-        super().__init__(PAGE_CREATED, self.on_page_created)
 
-    async def on_page_created(self, event: Message[PageCreated]) -> None:
+    async def __call__(self, event: Message[None, PageCreated, None]) -> None:
         """Process a `page-created` event."""
         index = render_default_template(
             page=event.data.document, base_url=self.base_url

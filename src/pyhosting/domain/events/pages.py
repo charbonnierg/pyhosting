@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from pyhosting.core import StaticEvent
+from synopsys import create_event
 
 from ..entities import Page
 
@@ -12,7 +12,11 @@ class PageCreated:
     document: Page
 
 
-PAGE_CREATED = StaticEvent("page-created", PageCreated)
+PAGE_CREATED = create_event(
+    name="page-created",
+    address="page.created",
+    schema=PageCreated,
+)
 
 
 @dataclass
@@ -23,4 +27,8 @@ class PageDeleted:
     name: str
 
 
-PAGE_DELETED = StaticEvent("page-deleted", PageDeleted)
+PAGE_DELETED = create_event(
+    name="page-deleted",
+    address="page.deleted",
+    schema=PageDeleted,
+)

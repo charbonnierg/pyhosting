@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pytest
 
-from pyhosting.core.adapters.memory import InMemoryMessage as Msg
 from pyhosting.domain.actors import sync_local
 from pyhosting.domain.entities import Page
 from pyhosting.domain.events.page_versions import (
@@ -18,6 +17,7 @@ from pyhosting.domain.events.pages import (
     PageDeleted,
 )
 from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
+from synopsys.adapters.memory import InMemoryMessage as Msg
 
 
 @pytest.mark.asyncio
@@ -30,10 +30,11 @@ class TestSyncLocalActors:
         )
         default_path = local_storage.get_latest_path_or_default("test")
         assert not Path(default_path).exists()
-        await actor.handler(
+        await actor(
             Msg(
-                PAGE_CREATED,
-                PageCreated(
+                event=PAGE_CREATED,
+                subject="test",
+                payload=PageCreated(
                     document=Page(
                         id="testid",
                         name="test",
@@ -42,6 +43,7 @@ class TestSyncLocalActors:
                         latest_version=None,
                     )
                 ),
+                headers=None,
             )
         )
         assert Path(default_path).is_dir()
@@ -59,10 +61,12 @@ class TestSyncLocalActors:
             local_storage.get_version_path("test", "2")
         ).is_dir()
         actor = sync_local.CleanLocalStorageOnPageDeleted(local_storage)
-        await actor.handler(
+        await actor(
             Msg(
                 PAGE_DELETED,
-                PageDeleted(id="testid", name="test"),
+                subject="test",
+                payload=PageDeleted(id="testid", name="test"),
+                headers=None,
             )
         )
         assert not local_storage.root.joinpath(
@@ -83,10 +87,14 @@ class TestSyncLocalActors:
         actor = sync_local.CleanLocalStorageOnVersionDeleted(
             local_storage=local_storage
         )
-        await actor.handler(
+        await actor(
             Msg(
                 PAGE_VERSION_DELETED,
-                PageVersionDeleted(page_id="testid", page_name="test", version="1"),
+                subject="test",
+                payload=PageVersionDeleted(
+                    page_id="testid", page_name="test", version="1"
+                ),
+                headers=None,
             )
         )
         assert not local_storage.root.joinpath(
@@ -106,14 +114,16 @@ class TestSyncLocalActors:
             local_storage=local_storage,
             blob_storage=blob_storage,
         )
-        await actor.handler(
+        await actor(
             Msg(
                 PAGE_VERSION_UPLOADED,
-                PageVersionUploaded(
+                subject="test",
+                payload=PageVersionUploaded(
                     page_id="testid",
                     page_name="test",
                     version="1",
                 ),
+                headers=None,
             )
         )
         assert (

@@ -6,14 +6,14 @@ from pathlib import Path
 import httpx
 import typer
 
-from pyhosting.clients.controlplane.http import HTTPControlPlaneClient
+from pyhosting.clients.pages.http import HTTPPagesClient
 
 page = typer.Typer(name="page", no_args_is_help=True)
 
 
 @page.command("list")
 def list() -> None:
-    client = HTTPControlPlaneClient()
+    client = HTTPPagesClient()
     try:
         pages = client.list_pages()
     except httpx.HTTPError as exc:
@@ -25,7 +25,7 @@ def list() -> None:
 
 @page.command("info")
 def get_infos(name: str) -> None:
-    client = HTTPControlPlaneClient()
+    client = HTTPPagesClient()
     try:
         page = client.get_page_by_name(name)
     except httpx.HTTPError as exc:
@@ -39,7 +39,7 @@ def get_infos(name: str) -> None:
 def create(
     name: str, title: t.Optional[str] = None, description: t.Optional[str] = None
 ) -> None:
-    client = HTTPControlPlaneClient()
+    client = HTTPPagesClient()
     try:
         page = client.create_page(name=name, title=title, description=description)
     except httpx.HTTPStatusError as exc:
@@ -56,7 +56,7 @@ def publish(
     version: str = typer.Option(..., help="Version"),
     latest: bool = typer.Option(False, help="Mark version as latest version"),
 ) -> None:
-    client = HTTPControlPlaneClient()
+    client = HTTPPagesClient()
     try:
         page = client.get_page_by_name(name=name)
     except httpx.HTTPStatusError as exc:

@@ -3,7 +3,6 @@ from hashlib import md5
 import pytest
 from genid import IDGenerator
 
-from pyhosting.core import EventBus
 from pyhosting.domain.entities import PageVersion
 from pyhosting.domain.errors import (
     CannotDeleteLatestVersionError,
@@ -15,8 +14,9 @@ from pyhosting.domain.events import PAGE_VERSION_CREATED, PAGE_VERSION_DELETED
 from pyhosting.domain.events.page_versions import PageVersionCreated, PageVersionDeleted
 from pyhosting.domain.repositories import PageRepository, PageVersionRepository
 from pyhosting.domain.usecases import crud_pages, crud_versions
+from synopsys import EventBus
+from synopsys.concurrency import Waiter
 from tests.utils import (
-    Waiter,
     parametrize_id_generator,
     parametrize_page_repository,
     parametrize_page_version_repository,
@@ -118,12 +118,12 @@ class TestPageCrudUseCases:
             update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
             clock=lambda: 0,
         )
-        waiter = await Waiter.create(event_bus, PAGE_VERSION_CREATED)
+        waiter = await Waiter.create(event_bus.subscribe(PAGE_VERSION_CREATED))
         version = await publish_usecase.do(
             page_id="fakeid", page_version="1", content=b"<html></html>", latest=False
         )
         event = await waiter.wait(0.1)
-        assert event == PageVersionCreated(
+        assert event.data == PageVersionCreated(
             document=version, content=b"<html></html>", latest=False
         )
         result = await get_page_usecase.do(page_id="fakeid")
@@ -162,12 +162,12 @@ class TestPageCrudUseCases:
             update_latest_version=crud_pages.UpdateLatestPageVersion(page_repository),
             clock=lambda: 0,
         )
-        waiter = await Waiter.create(event_bus, PAGE_VERSION_CREATED)
+        waiter = await Waiter.create(event_bus.subscribe(PAGE_VERSION_CREATED))
         version = await publish_usecase.do(
             page_id="fakeid", page_version="1", content=b"<html></html>", latest=True
         )
         event = await waiter.wait()
-        assert event == PageVersionCreated(
+        assert event.data == PageVersionCreated(
             document=version, content=b"<html></html>", latest=True
         )
         result = await get_page_usecase.do(page_id="fakeid")
@@ -378,10 +378,10 @@ class TestPageCrudUseCases:
             page_id="fakeid", page_version="2", content=b"<html></html>", latest=True
         )
 
-        waiter = await Waiter.create(event_bus, PAGE_VERSION_DELETED)
+        waiter = await Waiter.create(event_bus.subscribe(PAGE_VERSION_DELETED))
         await delete_version_usecase.do(page_id="fakeid", page_version="1")
         event = await waiter.wait(0.1)
-        assert event == PageVersionDeleted(
+        assert event.data == PageVersionDeleted(
             page_id="fakeid", page_name="test", version="1"
         )
         get_latest_version_usecase = crud_versions.GetLatestPageVersion(
