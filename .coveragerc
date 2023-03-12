@@ -2,3 +2,5 @@
 relative_files = True
 branch = True
 source = src
+omit =
+    src/pyhosting/applications/cli/*

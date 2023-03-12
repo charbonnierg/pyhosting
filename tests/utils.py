@@ -57,25 +57,6 @@ def parametrize_page_repository(kind: str, **kwargs: t.Any) -> t.Callable[[F], F
     return decorator
 
 
-def parametrize_page_version_repository(
-    kind: str, **kwargs: t.Any
-) -> t.Callable[[F], F]:
-    """A decorator to parametrize version_repository fixture."""
-
-    def decorator(func: F) -> F:
-        return t.cast(
-            F,
-            pytest.mark.parametrize(
-                "version_repository",
-                [(kind, kwargs)],
-                ids=["pageversionrepo/" + kind],
-                indirect=True,
-            )(func),
-        )
-
-    return decorator
-
-
 def parametrize_clock(clock: t.Callable[[], int]) -> t.Callable[[F], F]:
     """A decorator to parametrize clock fixture."""
 

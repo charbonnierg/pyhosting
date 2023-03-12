@@ -1,5 +1,3 @@
-import typing as t
-
 from synopsys import (
     EMPTY,
     DataT,
@@ -27,11 +25,7 @@ class BaseInMemoryMessage(BaseMessage[ScopeT, DataT, MetadataT, ReplyT]):
         self._payload = payload
         self._headers = headers
         self._subject = subject
-        if self._event.scope is type(None):  # noqa: E721
-            # I don't know why mypy is not happy so I'm using cast...
-            self._scope = t.cast(ScopeT, None)
-        else:
-            self._scope = self._event.extract_scope(self._subject)
+        self._scope = self._event.extract_scope(self._subject)
 
     @property
     def subject(self) -> str:

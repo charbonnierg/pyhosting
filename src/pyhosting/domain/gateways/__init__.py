@@ -1,4 +1,5 @@
 from .blob_storage import BlobStorageGateway
-from .local_storage import LocalStorageGateway
+from .file_storage import FilestorageGateway
+from .template_loader import TemplateLoader
 
-__all__ = ["BlobStorageGateway", "LocalStorageGateway"]
+__all__ = ["BlobStorageGateway", "FilestorageGateway", "TemplateLoader"]

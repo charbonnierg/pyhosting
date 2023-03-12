@@ -1,21 +1,21 @@
 from .pages_control_plane import (
-    CleanBlobStorageOnPageDelete,
-    CleanBlobStorageOnVersionDelete,
-    UploadToBlobStorageOnVersionCreated,
+    CleanStorageOnPageDeleted,
+    CleanStorageOnVersionDeleted,
+    UploadContentOnVersionCreated,
 )
 from .pages_data_plane import (
-    CleanLocalStorageOnPageDeleted,
-    CleanLocalStorageOnVersionDeleted,
-    DownloadToLocalStorageOnVersionUploaded,
-    GenerateDefaultIndexOnPageCreated,
+    CleanCacheOnPageDeleted,
+    CleanCacheOnVersionDeleted,
+    InitCacheOnPageCreated,
+    UpdateCacheOnVersionUploaded,
 )
 
 __all__ = [
-    "CleanBlobStorageOnPageDelete",
-    "CleanBlobStorageOnVersionDelete",
-    "CleanLocalStorageOnPageDeleted",
-    "CleanLocalStorageOnVersionDeleted",
-    "DownloadToLocalStorageOnVersionUploaded",
-    "GenerateDefaultIndexOnPageCreated",
-    "UploadToBlobStorageOnVersionCreated",
+    "CleanStorageOnPageDeleted",
+    "CleanStorageOnVersionDeleted",
+    "CleanCacheOnPageDeleted",
+    "CleanCacheOnVersionDeleted",
+    "UpdateCacheOnVersionUploaded",
+    "InitCacheOnPageCreated",
+    "UploadContentOnVersionCreated",
 ]

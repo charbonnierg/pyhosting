@@ -3,6 +3,19 @@ import typing as t
 from .events import EventQueue, EventSpec
 from .types import DataT, MetadataT, ReplyT, ScopeT
 
+T = t.TypeVar("T")
+
+
+class Codec(t.Protocol):
+    def encode(self, data: t.Any) -> bytes:
+        ...
+
+    def decode(self, raw: bytes, schema: t.Type[T]) -> T:
+        ...
+
+    def parse_obj(self, data: t.Any, schema: t.Type[T]) -> T:
+        ...
+
 
 class BaseMessage(t.Protocol[ScopeT, DataT, MetadataT, ReplyT]):
     """A message is the container of an event."""
@@ -143,7 +156,7 @@ class AllowReply(t.Protocol):
         Each command contains both the command definition and the command payload.
 
         Arguments:
-            command: A command to observe
+            event: A service event to observe
             queue: An optional string indicating that observer belongs to a queue group.
                 Within a queue group, each command is delivered to a single observer.
 
@@ -167,9 +180,7 @@ class AllowPull(t.Protocol):
         This iterator can be used to iterate over received jobs.
 
         Arguments:
-            event: An event spec to observe
-            queue: An optional string indicating that observer belongs to a queue group.
-                Within a queue group, each command is delivered to a single observer.
+            queue: An event queue to fetch jobs from.
 
         Returns:
             An asynchronous context manager yielding an asynchronous iterator of requests.

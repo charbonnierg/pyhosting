@@ -22,7 +22,7 @@ def normalize_filter_subject(
 
     Arguments:
         subject: an event name
-        context: values used to replace placeholders
+        syntax: subject syntax
 
     Returns:
         a tuple of two elements: (subject, placeholders) where placeholders is a

@@ -3,9 +3,9 @@ import typing as t
 import pytest
 from genid import IDGenerator
 
-from pyhosting.adapters.clients.http.testing import InMemoryHTTPPagesClient
+from pyhosting.adapters.clients.http.testing import PagesAPITestHTTPClient
 from pyhosting.applications.controlplane.factory import create_app
-from pyhosting.domain.repositories import PageRepository, PageVersionRepository
+from pyhosting.domain.repositories import PageRepository
 from synopsys import EventBus
 
 
@@ -14,15 +14,13 @@ def client(
     id_generator: IDGenerator,
     event_bus: EventBus,
     page_repository: PageRepository,
-    version_repository: PageVersionRepository,
     clock: t.Callable[[], int],
-) -> t.Iterator[InMemoryHTTPPagesClient]:
+) -> t.Iterator[PagesAPITestHTTPClient]:
     """Create an HTTP client to use within tests."""
-    test_client = InMemoryHTTPPagesClient(
+    test_client = PagesAPITestHTTPClient(
         create_app(
-            id_generator,
+            id_generator=id_generator,
             page_repository=page_repository,
-            version_repository=version_repository,
             event_bus=event_bus,
             clock=clock,
         )

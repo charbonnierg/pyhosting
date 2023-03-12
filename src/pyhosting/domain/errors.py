@@ -12,9 +12,14 @@ class ConflictError(PyHostingError):
     pass
 
 
-class EmptyContentError(PyHostingError):
+class InvalidContentError(PyHostingError):
+    def __init__(self, details: str) -> None:
+        super().__init__(428, details)
+
+
+class EmptyContentError(InvalidContentError):
     def __init__(self) -> None:
-        super().__init__(428, "Content is empty")
+        super().__init__("Content is empty")
 
 
 class ResourceAlreadyExistsError(ConflictError):
@@ -37,6 +42,11 @@ class ResourceNotFoundError(PyHostingError):
         super().__init__(404, f"{resource.capitalize()} not found: {identifier}")
 
 
+class BlobNotFoundError(ResourceNotFoundError):
+    def __init__(self, identifier: str) -> None:
+        super().__init__("blob", identifier)
+
+
 class PageNotFoundError(ResourceNotFoundError):
     def __init__(self, identifier: str) -> None:
         super().__init__("page", identifier)
@@ -50,3 +60,9 @@ class VersionNotFoundError(ResourceNotFoundError):
 class CannotDeleteLatestVersionError(ConflictError):
     def __init__(self, name: str, version: str) -> None:
         super().__init__(409, f"Cannot delete latest page version: {name}/{version}")
+
+
+class InvalidRequestError(PyHostingError):
+    def __init__(self, details: str) -> None:
+        self.detials = details
+        super().__init__(428, f"Invalid request: {details}")

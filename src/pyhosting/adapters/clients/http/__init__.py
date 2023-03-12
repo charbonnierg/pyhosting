@@ -1,3 +1,3 @@
-from .pages import HTTPPagesClient
+from .pages import PagesAPIHTTPClient
 
-__all__ = ["HTTPPagesClient"]
+__all__ = ["PagesAPIHTTPClient"]

@@ -5,14 +5,10 @@ import pytest
 from _pytest.fixtures import SubRequest
 from genid import IDGenerator, generator
 
-from pyhosting.adapters.gateways.memory import InMemoryBlobStorage
-from pyhosting.adapters.gateways.temporary import TemporaryDirectory
-from pyhosting.adapters.repositories.memory import (
-    InMemoryPageRepository,
-    InMemoryPageVersionRepository,
-)
-from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
-from pyhosting.domain.repositories import PageRepository, PageVersionRepository
+from pyhosting.adapters.gateways import InMemoryBlobStorage, TemporaryDirectory
+from pyhosting.adapters.repositories import InMemoryPageRepository
+from pyhosting.domain.gateways import BlobStorageGateway, FilestorageGateway
+from pyhosting.domain.repositories import PageRepository
 from synopsys import EventBus
 from synopsys.adapters.memory import InMemoryEventBus
 
@@ -62,20 +58,6 @@ def page_repository(request: SubRequest) -> PageRepository:
 
 
 @pytest.fixture
-def version_repository(request: SubRequest) -> PageVersionRepository:
-    """Create a page version repository to use within tests."""
-    param = getattr(request, "param", "memory")
-    if isinstance(param, tuple):
-        kind, options = param
-    else:
-        kind = param
-        options = {}
-    if kind == "memory":
-        return InMemoryPageVersionRepository(**options)
-    raise ValueError(f"Unknown page version repository implementation: {kind}")
-
-
-@pytest.fixture
 def blob_storage(request: SubRequest) -> BlobStorageGateway:
     """Create a blob storage to use within tests."""
     param = getattr(request, "param", "memory")
@@ -90,7 +72,7 @@ def blob_storage(request: SubRequest) -> BlobStorageGateway:
 
 
 @pytest.fixture
-def local_storage(request: SubRequest) -> LocalStorageGateway:
+def local_storage(request: SubRequest) -> FilestorageGateway:
     """Create a local storage to use within tests."""
     param = getattr(request, "param", "temporary")
     if isinstance(param, tuple):

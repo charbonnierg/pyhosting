@@ -1,74 +1,87 @@
+from dataclasses import dataclass
+
 from synopsys import Message
 
-from ...events.page import PageCreated, PageDeleted
-from ...events.version import PageVersionDeleted, PageVersionUploaded
-from ...gateways import BlobStorageGateway, LocalStorageGateway
-from ...templates import render_default_template
+from ...events import PageCreated, PageDeleted, VersionDeleted, VersionUploaded
+from ...gateways import BlobStorageGateway, FilestorageGateway, TemplateLoader
+from ...operations.archives import unpack_archive
+from ...templates import DEFAULT_TEMPLATE
 
 
-class DownloadToLocalStorageOnVersionUploaded:
-    """Download page version from blob storage into local storage on `page-version-uploaded` event."""
+@dataclass
+class UpdateCacheOnVersionUploaded:
+    """Download page version from blob storage into local storage on `version-uploaded` event."""
 
-    def __init__(
-        self, local_storage: LocalStorageGateway, blob_storage: BlobStorageGateway
-    ) -> None:
-        self.local_storage = local_storage
-        self.blob_storage = blob_storage
+    local_storage: FilestorageGateway
+    blob_storage: BlobStorageGateway
 
-    async def __call__(self, msg: Message[None, PageVersionUploaded, None]) -> None:
-        """Process a `page-version-uploaded` event."""
-        content = await self.blob_storage.get_version(
-            page_id=msg.data.page_id, page_version=msg.data.version
+    async def __call__(self, msg: Message[None, VersionUploaded, None]) -> None:
+        """Process a `version-uploaded` event."""
+        version = msg.data
+        # Download from blob storage
+        content = await self.blob_storage.get(version.page_id, version.page_version)
+        # Write content into local storage
+        version_directory = self.local_storage.get_path(
+            version.page_name, version.page_version
         )
-        # QUESTION: This should never happen, because version is defined on the page entity
-        # Should we test this line ?
-        if content is None:
-            raise ValueError("No content")
-        await self.local_storage.unpack_archive(
-            page_name=msg.data.page_name,
-            version=msg.data.version,
-            content=content,
-            latest=True,
+        unpack_archive(
+            content, version_directory, omit_top_level=True, create_parents=True
         )
+        # Update latest symlink
+        if version.is_latest:
+            # Rewrite latest symlink
+            version_directory.parent.joinpath("__latest__").unlink(missing_ok=True)
+            version_directory.parent.joinpath("__latest__").symlink_to(
+                version_directory, target_is_directory=True
+            )
 
 
-class CleanLocalStorageOnVersionDeleted:
-    """Remove page version from local storage on `page-version-deleted` event."""
+@dataclass
+class CleanCacheOnVersionDeleted:
+    """Remove page version from local storage on `version-deleted` event."""
 
-    def __init__(self, local_storage: LocalStorageGateway) -> None:
-        self.local_storage = local_storage
+    local_storage: FilestorageGateway
 
-    async def __call__(self, event: Message[None, PageVersionDeleted, None]) -> None:
-        """Process a `page-version-deleted` event."""
+    async def __call__(self, event: Message[None, VersionDeleted, None]) -> None:
+        """Process a `version-deleted` event."""
         await self.local_storage.remove_directory(
-            page_name=event.data.page_name, version=event.data.version
+            event.data.page_name, event.data.page_version
         )
 
 
-class CleanLocalStorageOnPageDeleted:
+@dataclass
+class CleanCacheOnPageDeleted:
     """Delete all pages version from local storage on `page-deleted` event."""
 
-    def __init__(self, local_storage: LocalStorageGateway) -> None:
-        self.local_storage = local_storage
+    local_storage: FilestorageGateway
 
     async def __call__(self, event: Message[None, PageDeleted, None]) -> None:
         """Process a `page-deleted` event."""
-        await self.local_storage.remove_directory(page_name=event.data.name)
+        await self.local_storage.remove_directory(event.data.page_name)
 
 
-class GenerateDefaultIndexOnPageCreated:
+@dataclass
+class InitCacheOnPageCreated:
     """Generate default index.html for latest page on `page-created` event."""
 
-    def __init__(self, local_storage: LocalStorageGateway, base_url: str) -> None:
-        self.local_storage = local_storage
-        self.base_url = base_url
+    local_storage: FilestorageGateway
+    base_url: str
+    templates: TemplateLoader
+
+    def __post_init__(self) -> None:
+        self.default_template = self.templates.load_template(
+            DEFAULT_TEMPLATE.read_text()
+        )
 
     async def __call__(self, event: Message[None, PageCreated, None]) -> None:
         """Process a `page-created` event."""
-        index = render_default_template(
+        index = self.default_template.render(
             page=event.data.document, base_url=self.base_url
         )
-        await self.local_storage.write_default_file(
-            page_name=event.data.document.name,
+        await self.local_storage.write_bytes(
+            event.data.document.name,
+            "__default__",
+            "index.html",
             content=index.encode("utf-8"),
+            create_parents=True,
         )

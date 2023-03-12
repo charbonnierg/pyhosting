@@ -3,15 +3,17 @@ import typing as t
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
-from pyhosting.adapters.gateways.memory import InMemoryBlobStorage
-from pyhosting.adapters.gateways.temporary import TemporaryDirectory
 from pyhosting.domain import events
-from pyhosting.domain.gateways import BlobStorageGateway, LocalStorageGateway
+from pyhosting.domain.gateways import (
+    BlobStorageGateway,
+    FilestorageGateway,
+    TemplateLoader,
+)
 from pyhosting.domain.usecases.effects import pages_data_plane
 from synopsys import EventBus, Play, Subscriber
-from synopsys.adapters.memory import InMemoryEventBus
 
-from .controllers.http import (
+from .defaults import defaults
+from .routes.http import (
     HealthCheckRouter,
     LatestFileserver,
     StaticFileServer,
@@ -21,41 +23,48 @@ from .controllers.http import (
 
 def create_app(
     event_bus: t.Optional[EventBus] = None,
-    storage: t.Optional[BlobStorageGateway] = None,
-    local_storage: t.Optional[LocalStorageGateway] = None,
+    blob_storage: t.Optional[BlobStorageGateway] = None,
+    local_storage: t.Optional[FilestorageGateway] = None,
+    templates: t.Optional[TemplateLoader] = None,
     base_url: str = "http://localhost:8000",
 ) -> Starlette:
     """Create  a new Data Plane starlette application.
 
     Assuming proper arguments are provided, application can be entirely deterministic.
     """
-    event_bus = event_bus or InMemoryEventBus()
-    blob_storage = storage or InMemoryBlobStorage()
-    local_storage = local_storage or TemporaryDirectory()
+    event_bus, blob_storage, local_storage, templates = defaults(
+        event_bus,
+        blob_storage,
+        local_storage,
+        templates,
+    )
+
     actors = Play(
         bus=event_bus,
         actors=[
             Subscriber(
                 event=events.PAGE_CREATED,
-                handler=pages_data_plane.GenerateDefaultIndexOnPageCreated(
-                    local_storage=local_storage, base_url=base_url
+                handler=pages_data_plane.InitCacheOnPageCreated(
+                    local_storage=local_storage,
+                    base_url=base_url,
+                    templates=templates,
                 ),
             ),
             Subscriber(
                 event=events.PAGE_DELETED,
-                handler=pages_data_plane.CleanLocalStorageOnPageDeleted(
+                handler=pages_data_plane.CleanCacheOnPageDeleted(
                     local_storage=local_storage
                 ),
             ),
             Subscriber(
-                event=events.PAGE_VERSION_DELETED,
-                handler=pages_data_plane.CleanLocalStorageOnVersionDeleted(
+                event=events.VERSION_DELETED,
+                handler=pages_data_plane.CleanCacheOnVersionDeleted(
                     local_storage=local_storage
                 ),
             ),
             Subscriber(
-                event=events.PAGE_VERSION_UPLOADED,
-                handler=pages_data_plane.DownloadToLocalStorageOnVersionUploaded(
+                event=events.VERSION_UPLOADED,
+                handler=pages_data_plane.UpdateCacheOnVersionUploaded(
                     local_storage=local_storage, blob_storage=blob_storage
                 ),
             ),

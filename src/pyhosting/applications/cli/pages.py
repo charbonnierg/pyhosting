@@ -6,14 +6,21 @@ from pathlib import Path
 import httpx
 import typer
 
-from pyhosting.adapters.clients.http.pages import HTTPPagesClient
+from pyhosting.adapters.clients.http.pages import PagesAPIHTTPClient
+from pyhosting.domain.errors import InvalidContentError
+from pyhosting.domain.operations.archives import (
+    create_archive,
+    create_archive_from_content,
+    is_tarfile,
+    validate_archive,
+)
 
 page = typer.Typer(name="page", no_args_is_help=True)
 
 
 @page.command("list")
 def list() -> None:
-    client = HTTPPagesClient()
+    client = PagesAPIHTTPClient()
     try:
         pages = client.list_pages()
     except httpx.HTTPError as exc:
@@ -25,7 +32,7 @@ def list() -> None:
 
 @page.command("info")
 def get_infos(name: str) -> None:
-    client = HTTPPagesClient()
+    client = PagesAPIHTTPClient()
     try:
         page = client.get_page_by_name(name)
     except httpx.HTTPError as exc:
@@ -39,7 +46,7 @@ def get_infos(name: str) -> None:
 def create(
     name: str, title: t.Optional[str] = None, description: t.Optional[str] = None
 ) -> None:
-    client = HTTPPagesClient()
+    client = PagesAPIHTTPClient()
     try:
         page = client.create_page(name=name, title=title, description=description)
     except httpx.HTTPStatusError as exc:
@@ -56,17 +63,32 @@ def publish(
     version: str = typer.Option(..., help="Version"),
     latest: bool = typer.Option(False, help="Mark version as latest version"),
 ) -> None:
-    client = HTTPPagesClient()
+    client = PagesAPIHTTPClient()
     try:
         page = client.get_page_by_name(name=name)
     except httpx.HTTPStatusError as exc:
         typer.echo(exc.response.content)
         raise typer.Exit(1)
-    # TODO: Could create a tarball if path is a directory.
-    # This way we would support: .html / .tar.gz / directories with index.html
+    source = Path(path).expanduser()
+    if not source.exists():
+        typer.echo(f"File or directory not found: {source.as_posix()}")
+        raise typer.Exit(1)
+    if source.is_file():
+        # TODO: Better file parsing
+        if is_tarfile(source):
+            archive = source.read_bytes()
+        else:
+            archive = create_archive_from_content(source.read_bytes())
+    else:
+        archive = create_archive(source)
+    try:
+        validate_archive(archive)
+    except InvalidContentError as exc:
+        typer.echo(f"Error: {exc.msg}", err=True)
+        raise typer.Exit(1)
     try:
         new_version = client.publish_page_version(
-            page.id, version, Path(path).read_bytes(), latest=latest
+            page.id, version, archive, latest=latest
         )
     except httpx.HTTPStatusError as exc:
         typer.echo(f"Request failed with status {exc.response.status_code}")

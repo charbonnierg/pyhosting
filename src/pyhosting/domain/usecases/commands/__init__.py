@@ -1,8 +1,8 @@
 from .pages import (
     CreatePage,
-    CreatePageVersion,
     DeletePage,
     DeletePageVersion,
+    PublishVersion,
     UpdateLatestPageVersion,
 )
 
@@ -10,6 +10,6 @@ __all__ = [
     "CreatePage",
     "DeletePage",
     "UpdateLatestPageVersion",
-    "CreatePageVersion",
+    "PublishVersion",
     "DeletePageVersion",
 ]

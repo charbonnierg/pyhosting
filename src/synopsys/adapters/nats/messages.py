@@ -3,23 +3,12 @@ import typing as t
 from nats.aio.msg import Msg
 
 from synopsys import DataT, EventSpec, Message, MetadataT, ReplyT, Request, ScopeT
-from synopsys.core.interfaces import BaseMessage
+from synopsys.core.interfaces import BaseMessage, Codec
 
 __all__ = ["NATSMessage", "NATSRequest"]
 
 
 T = t.TypeVar("T")
-
-
-class Codec(t.Protocol):
-    def encode(self, data: t.Any) -> bytes:
-        ...
-
-    def decode(self, raw: bytes, schema: t.Type[T]) -> T:
-        ...
-
-    def parse_obj(self, data: t.Any, schema: t.Type[T]) -> T:
-        ...
 
 
 class BaseNATSMessage(BaseMessage[ScopeT, DataT, MetadataT, ReplyT]):
