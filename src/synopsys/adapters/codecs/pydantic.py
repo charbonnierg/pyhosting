@@ -14,6 +14,8 @@ class PydanticCodec(Codec):
         return dump(data)
 
     def decode(self, raw: bytes, schema: t.Type[T]) -> T:
+        if schema is bytes and isinstance(raw, bytes):
+            return t.cast(T, raw)
         return parse_raw_as(schema, raw)
 
     def parse_obj(

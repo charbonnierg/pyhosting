@@ -18,7 +18,7 @@ from tests.utils import parametrize_clock, parametrize_id_generator
 
 TEST_CONTENT = "<html><body></body></html>".encode()
 TEST_ARCHIVE = create_archive_from_content(TEST_CONTENT)
-TEST_CONTENT_MD5 = md5(create_archive_from_content(TEST_CONTENT)).hexdigest()
+TEST_CONTENT_MD5 = md5(TEST_ARCHIVE).hexdigest()
 
 
 def test_get_api_version(client: PagesAPITestHTTPClient):

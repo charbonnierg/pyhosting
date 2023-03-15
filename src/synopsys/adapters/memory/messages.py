@@ -49,6 +49,16 @@ class BaseInMemoryMessage(BaseMessage[ScopeT, DataT, MetadataT, ReplyT]):
     def spec(self) -> EventSpec[ScopeT, DataT, MetadataT, ReplyT]:
         return self._event
 
+    def __eq__(self, other: object) -> bool:
+        if (
+            self._event == getattr(other, "_event", None)
+            and self._payload == getattr(other, "_payload", None)
+            and self._headers == getattr(other, "_headers", None)
+            and self._scope == getattr(other, "_scope", None)
+        ):
+            return True
+        return False
+
 
 class InMemoryMessage(
     BaseInMemoryMessage[ScopeT, DataT, MetadataT, None],

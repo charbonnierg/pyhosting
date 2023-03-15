@@ -1,8 +1,10 @@
+import logging
 import typing as t
 
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
+from pyhosting.adapters.instrumentation import PlayInstrumentation
 from pyhosting.domain import events
 from pyhosting.domain.gateways import (
     BlobStorageGateway,
@@ -32,6 +34,11 @@ def create_app(
 
     Assuming proper arguments are provided, application can be entirely deterministic.
     """
+    instrumentation = PlayInstrumentation()
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(levelname)s - %(message)s",
+    )
     event_bus, blob_storage, local_storage, templates = defaults(
         event_bus,
         blob_storage,
@@ -69,6 +76,8 @@ def create_app(
                 ),
             ),
         ],
+        instrumentation=instrumentation,
+        auto_connect=True,
     )
     app = Starlette(
         routes=[

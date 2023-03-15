@@ -2,6 +2,7 @@ import typing as t
 from time import time
 
 from genid import IDGenerator, ObjectIDGenerator
+from nats import NATS
 
 from pyhosting.adapters.gateways import (
     InMemoryBlobStorage,
@@ -16,7 +17,8 @@ from pyhosting.domain.gateways import (
 )
 from pyhosting.domain.repositories import PageRepository
 from synopsys import EventBus
-from synopsys.adapters.memory import InMemoryEventBus
+from synopsys.adapters.codecs import PydanticCodec
+from synopsys.adapters.nats import NATSEventBus
 
 
 def defaults(
@@ -39,7 +41,7 @@ def defaults(
     return (
         id_generator or ObjectIDGenerator(),
         page_repository or InMemoryPageRepository(),
-        event_bus or InMemoryEventBus(),
+        event_bus or NATSEventBus(nc=NATS(), codec=PydanticCodec()),
         blob_storage or InMemoryBlobStorage(),
         local_storage or TemporaryDirectory(),
         template_loader or Jinja2Loader(),

@@ -23,7 +23,7 @@ class VersionCreated:
     """Payload of version-created event."""
 
     document: Version
-    content: bytes
+    content: str
     latest: bool
 
 

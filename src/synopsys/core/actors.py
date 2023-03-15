@@ -1,6 +1,6 @@
 import typing as t
 
-from .events import Event, EventQueue, Service
+from .events import Event, EventQueue, EventSpec, Service
 from .interfaces import Job, Message, Request
 from .types import DataT, MetadataT, ReplyT, ScopeT
 
@@ -11,6 +11,15 @@ class Actor:
         t.Coroutine[t.Any, t.Any, t.Any],
     ]
     """Coroutine function executed each time actor is triggered using an event."""
+
+    @property
+    def source(
+        self,
+    ) -> t.Union[
+        EventSpec[t.Any, t.Any, t.Any, t.Any], EventQueue[t.Any, t.Any, t.Any]
+    ]:
+        """Return source of events for actor"""
+        raise NotImplementedError
 
 
 class Subscriber(Actor, t.Generic[ScopeT, DataT, MetadataT]):
@@ -39,6 +48,11 @@ class Subscriber(Actor, t.Generic[ScopeT, DataT, MetadataT]):
         self.event = event
         self.handler = handler
 
+    @property
+    def source(self) -> Event[ScopeT, DataT, MetadataT]:
+        """Return source of events for actor"""
+        return self.event
+
 
 class Responder(Actor, t.Generic[ScopeT, DataT, MetadataT, ReplyT]):
     event: Service[ScopeT, DataT, MetadataT, ReplyT]
@@ -66,6 +80,11 @@ class Responder(Actor, t.Generic[ScopeT, DataT, MetadataT, ReplyT]):
         self.event = event
         self.handler = handler
 
+    @property
+    def source(self) -> Service[ScopeT, DataT, MetadataT, ReplyT]:
+        """Return source of events for actor"""
+        return self.event
+
 
 class Consumer(Actor, t.Generic[ScopeT, DataT, MetadataT]):
     queue: EventQueue[ScopeT, DataT, MetadataT]
@@ -92,3 +111,8 @@ class Consumer(Actor, t.Generic[ScopeT, DataT, MetadataT]):
         super().__init__()
         self.queue = queue
         self.handler = handler
+
+    @property
+    def source(self) -> EventQueue[ScopeT, DataT, MetadataT]:
+        """Return source of events for actor"""
+        return self.queue

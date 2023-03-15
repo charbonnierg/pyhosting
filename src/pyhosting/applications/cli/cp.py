@@ -20,4 +20,5 @@ def start() -> None:
 
     config = uvicorn.Config(create_app, factory=True)
     server = uvicorn.Server(config)
+
     server.run()

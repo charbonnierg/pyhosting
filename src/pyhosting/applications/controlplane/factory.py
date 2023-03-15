@@ -1,3 +1,4 @@
+import logging
 import typing as t
 from time import time
 
@@ -6,6 +7,7 @@ from fastapi.routing import APIRoute
 from genid import IDGenerator
 from starlette.routing import Mount
 
+from pyhosting.adapters.instrumentation import PlayInstrumentation
 from pyhosting.applications.dataplane.factory import create_app as create_agent_app
 from pyhosting.domain import events
 from pyhosting.domain.gateways import (
@@ -36,6 +38,11 @@ def create_app(
 
     Assuming proper arguments are provided, application can be entirely deterministic.
     """
+    instrumentation = PlayInstrumentation()
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(levelname)s - %(message)s",
+    )
     (
         id_generator,
         page_repository,
@@ -75,6 +82,8 @@ def create_app(
                 ),
             ),
         ],
+        instrumentation=instrumentation,
+        auto_connect=True,
     )
     # Need to extend actors because starlette does not start lifespan of mounted apps
     actors.extend(
@@ -139,4 +148,5 @@ def create_app(
         lifespan=lambda _: actors,
     )
     app.include_router(api_router, prefix="/api/pages", tags=["Pages"])
+
     return app

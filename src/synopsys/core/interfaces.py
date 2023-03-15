@@ -209,4 +209,8 @@ class PushPull(AllowPublish, AllowPull, t.Protocol):
 class EventBus(PubSub, ReqRep, PushPull, t.Protocol):
     """A complete event bus interface which can be used for various purposes."""
 
-    pass
+    async def connect(self) -> None:
+        ...  # pragma: no cover
+
+    async def close(self) -> None:
+        ...  # pragma: no cover

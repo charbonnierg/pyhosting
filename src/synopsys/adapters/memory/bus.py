@@ -197,3 +197,11 @@ class InMemoryEventBus(EventBus):
         self, queue: EventQueue[ScopeT, DataT, MetadataT]
     ) -> t.AsyncContextManager[t.AsyncIterator[Job[ScopeT, DataT, MetadataT]]]:
         raise NotImplementedError
+
+    async def connect(self) -> None:
+        """Dummy connect method"""
+        pass
+
+    async def close(self) -> None:
+        """Dummy close method"""
+        pass

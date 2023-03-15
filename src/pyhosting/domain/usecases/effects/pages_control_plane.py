@@ -28,7 +28,7 @@ class UploadContentOnVersionCreated:
         page_id = msg.data.document.page_id
         page_name = msg.data.document.page_name
         page_version = msg.data.document.page_version
-        blob = msg.data.content
+        blob = bytes.fromhex(msg.data.content)
         await self.storage.put(page_id, page_version, blob=blob)
         await self.event_bus.publish(
             VERSION_UPLOADED,
@@ -39,7 +39,7 @@ class UploadContentOnVersionCreated:
                 page_version=page_version,
                 is_latest=msg.data.latest,
             ),
-            metadata=None,
+            metadata={},
         )
 
 

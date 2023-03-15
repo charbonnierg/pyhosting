@@ -35,7 +35,9 @@ from synopsys import EventBus
 from synopsys.concurrency import Waiter
 from tests.utils import parametrize_id_generator, parametrize_page_repository
 
-TEST_ARCHIVE = create_archive_from_content(b"<html></html>")
+TEST_CONTENT = "<html></html>".encode("utf-8")
+TEST_ARCHIVE = create_archive_from_content(TEST_CONTENT)
+TEST_MD5 = md5(TEST_ARCHIVE).hexdigest()
 
 
 @pytest.mark.asyncio
@@ -73,7 +75,7 @@ class TestPublishVersion:
         event = await waiter.wait(0.1)
         assert event.data == VersionCreated(
             document=version,
-            content=TEST_ARCHIVE,
+            content=TEST_ARCHIVE.hex(),
             latest=False,
         )
         # Check page entity
@@ -85,7 +87,7 @@ class TestPublishVersion:
             page_id="fakeid",
             page_name="test",
             page_version="1",
-            checksum=md5(TEST_ARCHIVE).hexdigest(),
+            checksum=TEST_MD5,
             created_timestamp=0,
         )
 
@@ -125,7 +127,7 @@ class TestPublishVersion:
         event = await waiter.wait()
         assert event.data == VersionCreated(
             document=version,
-            content=TEST_ARCHIVE,
+            content=TEST_ARCHIVE.hex(),
             latest=True,
         )
         # Test page entity query
@@ -137,7 +139,7 @@ class TestPublishVersion:
             page_id="fakeid",
             page_name="test",
             page_version="1",
-            checksum=md5(TEST_ARCHIVE).hexdigest(),
+            checksum=TEST_MD5,
             created_timestamp=0,
         )
 

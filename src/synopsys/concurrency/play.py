@@ -6,6 +6,7 @@ from contextlib import AsyncExitStack
 from ..core.actors import Actor, Consumer, Responder, Subscriber
 from ..core.interfaces import EventBus, Job, Message, Request
 from ..core.types import DataT, MetadataT, ReplyT, ScopeT
+from ..instrumentation.play import PlayInstrumentation
 from .errors import ExceptionGroup
 
 
@@ -15,6 +16,8 @@ class Play:
         bus: EventBus,
         actors: t.Iterable[Actor],
         queue: t.Optional[str] = None,
+        instrumentation: t.Optional[PlayInstrumentation] = None,
+        auto_connect: bool = False,
     ) -> None:
         """Create a new play with actors.
 
@@ -23,8 +26,11 @@ class Play:
         Consumers ignore the queue option because they allow exactly once
         delivery regardless of the queue option.
         """
+        self.instrumentation = instrumentation or PlayInstrumentation()
         self.actors = list(actors)
+        self.queue = queue
         self.bus = bus
+        self.auto_connect = auto_connect
         # Initialize state
         self.tasks: t.List[asyncio.Task[None]] = []
         self.stack: t.Optional[AsyncExitStack] = None
@@ -51,15 +57,17 @@ class Play:
                     yield err
 
     def _cancel_on_first_exception(
-        self, _: Actor
+        self, actor: Actor
     ) -> t.Callable[["asyncio.Task[None]"], None]:
         """Create a done callback for an actor."""
 
         def callback(task_done: "asyncio.Task[None]") -> None:
             """Cancel remaining actors tasks on first task completion (success or error)"""
             if task_done.cancelled():
+                self.instrumentation.actor_cancelled(self, actor)
                 return
-            elif task_done.exception():
+            err = task_done.exception()
+            if err is not None:
                 for task in self.tasks:
                     if not task.done():
                         task.cancel()
@@ -76,20 +84,20 @@ class Play:
             iterator: t.AsyncIterator[Request[ScopeT, DataT, MetadataT, ReplyT]]
         ) -> None:
             """Task defined for each responder"""
-            print("Starting iterator")
             # Services receive tuples of (event, reply)
             async for request in iterator:
-                print("Received a request")
                 try:
                     # Handle command
                     result = await actor.handler(request)
                     # Reply result
                     await request.reply(result)
-                except BaseException as exc:  # noqa: F841
+                except Exception as exc:
                     # Log and exit on exception.
-                    print("FAILURE")
-                    # What to do ??
-                    raise
+                    self.instrumentation.event_processing_failed(
+                        self, actor, request, exc
+                    )
+                else:
+                    self.instrumentation.event_processed(self, actor, request)
 
         return task
 
@@ -106,10 +114,13 @@ class Play:
             async for event in iterator:
                 try:
                     await actor.handler(event)
-                except BaseException as exc:  # noqa: F841
+                except Exception as exc:
                     # Log and exit on exception.
-                    # What to do ???
-                    raise
+                    self.instrumentation.event_processing_failed(
+                        self, actor, event, exc
+                    )
+                else:
+                    self.instrumentation.event_processed(self, actor, event)
 
         return task
 
@@ -123,14 +134,15 @@ class Play:
             iterator: t.AsyncIterator[Job[ScopeT, DataT, MetadataT]]
         ) -> None:
             """Task defined for each consumer"""
-            async for event in iterator:
+            async for job in iterator:
                 # Do we want to auto-ack ??
                 try:
-                    await actor.handler(event)
-                except BaseException as exc:  # noqa: F841
+                    await actor.handler(job)
+                except Exception as exc:
                     # Log and exit on exception.
-                    # What to do ???
-                    raise
+                    self.instrumentation.event_processing_failed(self, actor, job, exc)
+                else:
+                    self.instrumentation.event_processed(self, actor, job)
 
         return task
 
@@ -143,9 +155,13 @@ class Play:
         """Start the actor group."""
         if self.stack is not None:
             return
+        if self.auto_connect:
+            await self.bus.connect()
+        self.instrumentation.play_starting(self)
         self.stack = AsyncExitStack()
         await self.stack.__aenter__()
         for actor in self.actors:
+            self.instrumentation.actor_starting(self, actor)
             if isinstance(actor, Responder):
                 request_handler = self._process_requests_iterator(actor)
                 request_iterator = await self.stack.enter_async_context(
@@ -168,16 +184,30 @@ class Play:
                 raise TypeError(f"Actor type not supported: {type(actor)}")
             task.add_done_callback(self._cancel_on_first_exception(actor))
             self.tasks.append(task)
+            self.instrumentation.actor_started(self, actor)
+        self.stack.push_async_callback(self.cancel_and_wait, timeout=10)
+        self.instrumentation.play_started(self)
 
-    async def stop(self, timeout: t.Optional[float] = None) -> None:
+    async def cancel_and_wait(self, timeout: t.Optional[float]) -> None:
+        """Cancel all actors and wait until they are finished"""
+        self.cancel()
+        await self.wait(timeout=timeout)
+
+    async def stop(self) -> None:
         """Stop actor group."""
         if self.stack is None:
             return
-        await self.stack.__aexit__(*sys.exc_info())
-        await self.wait(timeout=timeout)
-        errors = self.errors()
-        if errors:
-            raise ExceptionGroup(errors)
+        self.instrumentation.play_stopping(self)
+        try:
+            await self.stack.__aexit__(*sys.exc_info())
+            errors = self.errors()
+            if errors:
+                self.instrumentation.play_failed(self, errors)
+                raise ExceptionGroup(errors)
+            self.instrumentation.play_stopped(self)
+        finally:
+            if self.auto_connect:
+                await self.bus.close()
 
     async def wait(self, timeout: t.Optional[float] = None) -> None:
         """Wait until the play is stopped (until all actors are stopped)."""

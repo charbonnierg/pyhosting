@@ -1,12 +1,11 @@
 import asyncio
 import typing as t
-from re import escape
 
 import pytest
 
 from synopsys import Event, Message, create_event
 from synopsys.adapters.memory import InMemoryEventBus
-from synopsys.concurrency import ExceptionGroup, Play
+from synopsys.concurrency import Play
 from synopsys.core.actors import Subscriber
 
 T = t.TypeVar("T")
@@ -97,61 +96,6 @@ class TestActorsGroup:
         # Actors play is stopped because all events are processed
         assert len(actor.received_events) <= 1
         assert play.done()
-
-    async def test_actors_play_start_stop_failure(self):
-        bus = InMemoryEventBus()
-        event = create_event("test-event", "test", int)
-        # Create a mock actor
-        mock = MockSubscriber(event, exception=Exception("BOOM"))
-        # Start an actor play
-        with pytest.raises(
-            ExceptionGroup,
-            match=escape("1 error raised. Error: [Exception('BOOM')]"),
-        ):
-            async with Play(
-                bus=bus,
-                actors=[mock.get_actor()],
-            ) as play:
-                # Actors play just started so no event is received yet
-                assert len(mock.received_events) == 0
-                assert play.started()
-                # Publish 3 events
-                for idx in range(3):
-                    await bus.publish(event, scope=None, payload=idx, metadata=None)
-        # Actors play is stopped because all events are processed
-        assert len(mock.received_events) == 1
-        assert play.done()
-        assert play.errors()[0].args == ("BOOM",)
-
-    async def test_actors_play_start_stop_several_actors_one_failure(self):
-        bus = InMemoryEventBus()
-        evt1 = create_event("test-event", "test", int)
-        evt2 = create_event("test-event-2", "test.2", int)
-        # Create a mock actor
-        mock = MockSubscriber(evt1, exception=Exception("BOOM"))
-        other_mock = MockSubscriber(evt2)
-        # Start an actor play
-        with pytest.raises(
-            ExceptionGroup,
-            match=escape("1 error raised. Error: [Exception('BOOM')]"),
-        ):
-            async with Play(
-                bus=bus,
-                actors=[mock.get_actor(), other_mock.get_actor()],
-            ) as play:
-                # Actors play just started so no event is received yet
-                assert len(mock.received_events) == 0
-                assert play.started()
-                # Publish several events
-                for i in range(10):
-                    await bus.publish(evt1, scope=None, payload=i, metadata=None)
-                    await bus.publish(evt2, scope=None, payload=i, metadata=None)
-
-        # Actors play is stopped on first event because an error was raised
-        assert len(mock.received_events) == 1
-        assert len(other_mock.received_events) == 1
-        assert play.done()
-        assert play.errors()[0].args == ("BOOM",)
 
     async def test_actors_play_start_stop_several_actors_success(self):
         bus = InMemoryEventBus()

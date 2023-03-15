@@ -71,7 +71,7 @@ class CreatePage:
             event=PAGE_CREATED,
             scope=None,
             payload=PageCreated(document=page),
-            metadata=None,
+            metadata={},
         )
         return page
 
@@ -112,7 +112,7 @@ class DeletePage:
             PAGE_DELETED,
             scope=None,
             payload=PageDeleted(page_id=page.id, page_name=page.name),
-            metadata=None,
+            metadata={},
         )
 
 
@@ -160,8 +160,10 @@ class PublishVersion:
         await self.event_bus.publish(
             VERSION_CREATED,
             scope=None,
-            payload=VersionCreated(document=version, content=content, latest=latest),
-            metadata=None,
+            payload=VersionCreated(
+                document=version, content=content.hex(), latest=latest
+            ),
+            metadata={},
         )
         return version
 
@@ -192,5 +194,5 @@ class DeletePageVersion:
                 page_version=page_version,
                 page_name=page.name,
             ),
-            metadata=None,
+            metadata={},
         )

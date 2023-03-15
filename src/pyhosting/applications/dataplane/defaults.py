@@ -1,5 +1,7 @@
 import typing as t
 
+from nats import NATS
+
 from pyhosting.adapters.gateways import (
     InMemoryBlobStorage,
     Jinja2Loader,
@@ -11,7 +13,8 @@ from pyhosting.domain.gateways import (
     TemplateLoader,
 )
 from synopsys import EventBus
-from synopsys.adapters.memory import InMemoryEventBus
+from synopsys.adapters.codecs import PydanticCodec
+from synopsys.adapters.nats import NATSEventBus
 
 
 def defaults(
@@ -21,7 +24,7 @@ def defaults(
     template_loader: t.Optional[TemplateLoader] = None,
 ) -> t.Tuple[EventBus, BlobStorageGateway, FilestorageGateway, TemplateLoader,]:
     return (
-        event_bus or InMemoryEventBus(),
+        event_bus or NATSEventBus(NATS(), PydanticCodec()),
         blob_storage or InMemoryBlobStorage(),
         local_storage or TemporaryDirectory(),
         template_loader or Jinja2Loader(),

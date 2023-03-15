@@ -24,7 +24,7 @@ from synopsys import EventBus
 from synopsys.adapters.memory import InMemoryMessage as Msg
 from synopsys.concurrency import Waiter
 
-TEST_CONTENT = b"<html></html>"
+TEST_CONTENT = "<html></html>".encode("utf-8")
 TEST_ARCHIVE = create_archive_from_content(TEST_CONTENT)
 TEST_MD5 = md5(TEST_ARCHIVE).hexdigest()
 
@@ -53,7 +53,7 @@ class TestUploadContentOnVersionCreated:
                         checksum=TEST_MD5,
                         created_timestamp=0,
                     ),
-                    content=TEST_ARCHIVE,
+                    content=TEST_ARCHIVE.hex(),
                     latest=False,
                 ),
                 headers=None,
