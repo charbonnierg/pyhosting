@@ -1,7 +1,8 @@
-import typing as t
 import asyncio
-import pytest_asyncio
+import typing as t
+
 import pytest
+import pytest_asyncio
 from nats import NATS
 
 

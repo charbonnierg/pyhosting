@@ -148,5 +148,5 @@ def create_app(
         lifespan=lambda _: actors,
     )
     app.include_router(api_router, prefix="/api/pages", tags=["Pages"])
-
+    blob_storage.prepare()
     return app

@@ -1,12 +1,14 @@
-import typing as t
 import asyncio
+import typing as t
+
 import pytest
-from synopsys.concurrency import Play
-from synopsys.core.actors import Actor, Subscriber, Responder
-from synopsys.instrumentation.play import PlayInstrumentation
-from synopsys.adapters.memory import InMemoryEventBus, InMemoryMessage, InMemoryRequest
-from synopsys.core.interfaces import BaseMessage
+
 from synopsys import create_event
+from synopsys.adapters.memory import InMemoryEventBus, InMemoryMessage, InMemoryRequest
+from synopsys.concurrency import Play
+from synopsys.core.actors import Actor, Responder, Subscriber
+from synopsys.core.interfaces import BaseMessage
+from synopsys.instrumentation.play import PlayInstrumentation
 
 
 class MockInstrumentation(PlayInstrumentation):

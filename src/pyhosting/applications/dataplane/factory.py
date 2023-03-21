@@ -45,7 +45,7 @@ def create_app(
         local_storage,
         templates,
     )
-
+    blob_storage.prepare()
     actors = Play(
         bus=event_bus,
         actors=[

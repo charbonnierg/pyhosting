@@ -1,5 +1,6 @@
 import typing as t
 from contextlib import asynccontextmanager
+
 from nats import NATS
 
 from synopsys import (

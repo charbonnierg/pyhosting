@@ -1,5 +1,6 @@
 import logging
 import typing as t
+
 from synopsys.concurrency import Play
 from synopsys.core.actors import Actor
 from synopsys.core.interfaces import BaseMessage

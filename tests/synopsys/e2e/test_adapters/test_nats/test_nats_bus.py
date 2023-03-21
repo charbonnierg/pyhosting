@@ -1,11 +1,13 @@
-import typing as t
 import asyncio
-import pytest_asyncio
+import typing as t
+
 import pytest
+import pytest_asyncio
 from nats import NATS
-from synopsys.adapters.nats import NATSEventBus
-from synopsys.adapters.codecs import PydanticCodec
+
 from synopsys import create_event
+from synopsys.adapters.codecs import PydanticCodec
+from synopsys.adapters.nats import NATSEventBus
 
 
 @pytest_asyncio.fixture

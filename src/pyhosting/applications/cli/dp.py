@@ -18,6 +18,6 @@ def start() -> None:
         )
         raise typer.Exit(1)
 
-    config = uvicorn.Config(create_app, factory=True, port=9000)
+    config = uvicorn.Config(create_app, factory=True, port=9090)
     server = uvicorn.Server(config)
     server.run()
